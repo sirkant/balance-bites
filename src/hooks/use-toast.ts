@@ -1,3 +1,4 @@
+
 import * as React from "react"
 
 type ToastProps = {
@@ -6,6 +7,8 @@ type ToastProps = {
   description?: string
   action?: React.ReactNode
   variant?: "default" | "destructive"
+  onOpenChange?: (open: boolean) => void
+  open?: boolean
 }
 
 type ToastActionElement = React.ReactElement
