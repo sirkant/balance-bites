@@ -6,6 +6,8 @@ import UploadSection from '@/components/UploadSection';
 import Footer from '@/components/Footer';
 
 const Index = () => {
+  console.log('Rendering Index page');
+  
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
