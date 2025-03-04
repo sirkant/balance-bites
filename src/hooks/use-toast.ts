@@ -1,4 +1,3 @@
-
 import * as React from "react"
 
 export type ToastProps = {
@@ -179,4 +178,4 @@ function useToast() {
 
 export { useToast, toast }
 // Remove conflicting export of ToastProps to fix the error
-export type { ToastActionElement }
+export type { ToastProps, ToastActionElement }

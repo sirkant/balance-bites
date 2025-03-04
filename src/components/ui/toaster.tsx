@@ -1,5 +1,5 @@
 
-import { useToast, ToastProps } from "@/hooks/use-toast"
+import { useToast, type ToastProps } from "@/hooks/use-toast"
 import {
   Toast,
   ToastClose,
