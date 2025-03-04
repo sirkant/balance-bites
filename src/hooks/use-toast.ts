@@ -1,3 +1,4 @@
+
 import * as React from "react"
 
 export type ToastProps = {
@@ -177,5 +178,5 @@ function useToast() {
 }
 
 export { useToast, toast }
-// Remove conflicting export of ToastProps to fix the error
-export type { ToastProps, ToastActionElement }
+export type { ToastActionElement }
+// Note: ToastProps is already exported at the top of the file, so we don't re-export it here
