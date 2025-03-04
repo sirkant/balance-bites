@@ -6,7 +6,7 @@ import Features from '@/components/Features';
 import UploadSection from '@/components/UploadSection';
 import Footer from '@/components/Footer';
 import { RenderTest } from '@/utils/renderTest';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/use-toast';
 
 const Index = () => {
   console.log('Rendering Index page');
