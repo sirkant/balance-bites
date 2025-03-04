@@ -1,14 +1,14 @@
 
 import * as React from "react"
 
-type ToastProps = {
+export type ToastProps = {
   id: string
   title?: string
   description?: string
   action?: React.ReactNode
   variant?: "default" | "destructive"
-  onOpenChange?: (open: boolean) => void
   open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 type ToastActionElement = React.ReactElement
