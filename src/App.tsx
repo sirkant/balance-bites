@@ -10,9 +10,14 @@ import AuthPage from "./pages/AuthPage";
 import Dashboard from "./pages/Dashboard";
 import { RenderTest } from "./utils/renderTest";
 import { supabase } from "@/integrations/supabase/client";
+import GoogleAdsScript from "@/components/GoogleAdsScript";
+import UploadPage from "./pages/UploadPage";
 
 // Create a client
 const queryClient = new QueryClient();
+
+// Add your Google AdSense client ID here 
+const GOOGLE_AD_CLIENT = "YOUR_GOOGLE_AD_CLIENT_ID"; // Replace with actual client ID when provided
 
 function App() {
   console.log('App component rendering');
@@ -61,6 +66,8 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
+        {/* Include Google Ads Script */}
+        <GoogleAdsScript adClient={GOOGLE_AD_CLIENT} />
         {/* Add render test component */}
         <RenderTest id="app-level-test" />
         <BrowserRouter>
@@ -68,6 +75,7 @@ function App() {
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/upload" element={<UploadPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

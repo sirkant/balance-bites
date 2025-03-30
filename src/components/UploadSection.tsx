@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Upload, Camera, ImagePlus, ArrowRight } from 'lucide-react';
+import GoogleAdDisplay from './GoogleAdDisplay';
 
 const UploadSection = () => {
   const [isHovering, setIsHovering] = useState(false);
@@ -83,6 +84,15 @@ const UploadSection = () => {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Google Ad Display */}
+        <div className="mt-16">
+          <GoogleAdDisplay 
+            slot="1234567890" 
+            format="horizontal" 
+            className="mx-auto max-w-4xl bg-gray-100 min-h-[90px] flex items-center justify-center"
+          />
         </div>
       </div>
     </section>
