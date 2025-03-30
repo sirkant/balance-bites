@@ -14,7 +14,7 @@ const GoogleAdDisplay = ({
   style,
   className,
 }: GoogleAdDisplayProps) => {
-  const adRef = useRef<HTMLDivElement>(null);
+  const adRef = useRef<HTMLElement>(null); // Changed from HTMLDivElement to HTMLElement
 
   useEffect(() => {
     // Check if Google AdSense is loaded
