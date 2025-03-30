@@ -24,112 +24,6 @@ interface NutritionAnalysis {
   foods: string[];
 }
 
-// Mock function for image recognition (placeholder for future integration)
-async function someImageRecognitionAPI(imageUrl: string): Promise<Food[]> {
-  console.log('Analyzing image:', imageUrl);
-  
-  // Mock data - in a real implementation, this would call an actual image recognition API
-  const mockFoods: Food[] = [
-    { name: 'chicken', confidence: 0.92 },
-    { name: 'rice', confidence: 0.89 },
-    { name: 'broccoli', confidence: 0.85 },
-    { name: 'carrots', confidence: 0.72 }
-  ];
-  
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  // Only return foods with high confidence
-  return mockFoods.filter(food => food.confidence > 0.7);
-}
-
-// Mock function for nutrition information (placeholder for future integration)
-async function someNutritionAPI(foods: Food[]): Promise<NutritionAnalysis> {
-  console.log('Getting nutrition for foods:', foods.map(f => f.name).join(', '));
-  
-  // Mock nutritional data based on recognized foods
-  // In a real implementation, this would call an actual nutrition API
-  const foodNames = foods.map(food => food.name);
-  
-  // Calculate mock nutrition values based on the foods
-  let calories = 0;
-  let protein = 0;
-  let carbs = 0;
-  let fat = 0;
-  
-  for (const food of foods) {
-    switch (food.name) {
-      case 'chicken':
-        calories += 165;
-        protein += 31;
-        carbs += 0;
-        fat += 3.6;
-        break;
-      case 'rice':
-        calories += 130;
-        protein += 2.7;
-        carbs += 28;
-        fat += 0.3;
-        break;
-      case 'broccoli':
-        calories += 55;
-        protein += 3.7;
-        carbs += 11.2;
-        fat += 0.6;
-        break;
-      case 'carrots':
-        calories += 50;
-        protein += 1.2;
-        carbs += 12;
-        fat += 0.3;
-        break;
-      case 'salmon':
-        calories += 208;
-        protein += 20;
-        carbs += 0;
-        fat += 13;
-        break;
-      case 'pasta':
-        calories += 200;
-        protein += 7;
-        carbs += 40;
-        fat += 1;
-        break;
-      case 'beef':
-        calories += 250;
-        protein += 26;
-        carbs += 0;
-        fat += 17;
-        break;
-      case 'potato':
-        calories += 160;
-        protein += 4;
-        carbs += 36;
-        fat += 0;
-        break;
-      default:
-        // Default values for unknown foods
-        calories += 100;
-        protein += 5;
-        carbs += 10;
-        fat += 5;
-    }
-  }
-  
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  return {
-    calories,
-    macronutrients: {
-      protein,
-      carbs,
-      fat
-    },
-    foods: foodNames
-  };
-}
-
 // Function to decode base64 to Uint8Array for file upload
 function decodeBase64(base64String: string): Uint8Array {
   const base64Data = base64String.replace(/^data:image\/\w+;base64,/, '');
@@ -250,9 +144,24 @@ serve(async (req: Request) => {
           .from('meal-images')
           .getPublicUrl(fileName);
         
-        // Analyze the image using the mock functions
-        const recognizedFoods = await someImageRecognitionAPI(publicUrl);
-        const nutritionAnalysis = await someNutritionAPI(recognizedFoods);
+        // Call the meal-analysis function to analyze the image using GPT-4o-mini
+        console.log("Calling meal-analysis function with image URL:", publicUrl);
+        const analysisResponse = await fetch(`${supabaseUrl}/functions/v1/meal-analysis`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ imageUrl: publicUrl })
+        });
+        
+        if (!analysisResponse.ok) {
+          const errorData = await analysisResponse.json();
+          throw new Error(`Analysis error: ${errorData.error || 'Unknown error'}`);
+        }
+        
+        const { analysis } = await analysisResponse.json();
+        console.log("Received analysis results:", analysis);
         
         // Store the meal record in the database
         const { data: mealData, error: mealError } = await supabaseAdmin
@@ -261,7 +170,7 @@ serve(async (req: Request) => {
             {
               user_id: user.id,
               image_url: publicUrl,
-              analysis: nutritionAnalysis
+              analysis: analysis
             }
           ])
           .select()

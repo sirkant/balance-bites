@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -49,8 +50,9 @@ const Dashboard = () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.access_token) {
+        // Fix: Use the SUPABASE_URL from the client
         const response = await fetch(
-          `${supabaseUrl}/functions/v1/meals`,
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/meals`,
           {
             method: 'GET',
             headers: {
@@ -109,9 +111,9 @@ const Dashboard = () => {
       reader.onload = async () => {
         const base64Image = reader.result as string;
         
-        // Call our Supabase Edge Function
+        // Fix: Use the SUPABASE_URL from the client
         const response = await fetch(
-          `${supabaseUrl}/functions/v1/meals`,
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/meals`,
           {
             method: 'POST',
             headers: {
