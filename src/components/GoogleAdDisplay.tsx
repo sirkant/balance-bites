@@ -4,53 +4,44 @@ import { useEffect, useRef } from 'react';
 interface GoogleAdDisplayProps {
   slot: string;
   format?: 'auto' | 'rectangle' | 'horizontal' | 'vertical';
-  style?: React.CSSProperties;
+  responsive?: boolean;
   className?: string;
 }
 
-const GoogleAdDisplay = ({
-  slot,
-  format = 'auto',
-  style,
-  className,
+const GoogleAdDisplay = ({ 
+  slot, 
+  format = 'auto', 
+  responsive = true,
+  className = ''
 }: GoogleAdDisplayProps) => {
-  const adRef = useRef<HTMLElement>(null); // Changed from HTMLDivElement to HTMLElement
-
+  const adRef = useRef<HTMLDivElement>(null);
+  
   useEffect(() => {
-    // Check if Google AdSense is loaded
-    if (window.adsbygoogle) {
-      try {
-        // Push ad to AdSense
+    try {
+      // Check if Google AdSense is loaded
+      if (window.adsbygoogle) {
+        // Create a new ad
         (window.adsbygoogle = window.adsbygoogle || []).push({});
-        console.log('Ad pushed to Google AdSense');
-      } catch (e) {
-        console.error('Error loading Google AdSense ad:', e);
+      } else {
+        console.warn('Google AdSense not loaded yet');
       }
-    } else {
-      console.warn('Google AdSense not loaded yet');
+    } catch (error) {
+      console.error('Error loading Google AdSense ad:', error);
     }
   }, []);
 
   return (
-    <div className={className} style={style}>
+    <div className={className} ref={adRef}>
       <ins
-        ref={adRef}
-        className="adsbygoogle"
+        className={`adsbygoogle ${responsive ? 'adsbygoogle-responsive' : ''}`}
         style={{ display: 'block' }}
-        data-ad-client="ca-pub-YOUR_PUBLISHER_ID" // Replace with actual publisher ID
+        data-ad-client={import.meta.env.VITE_GOOGLE_AD_CLIENT || 'ca-pub-placeholder'}
         data-ad-slot={slot}
         data-ad-format={format}
-        data-full-width-responsive="true"
-      ></ins>
+        data-full-width-responsive={responsive ? 'true' : 'false'}
+      />
     </div>
   );
 };
-
-// Add window.adsbygoogle type definition
-declare global {
-  interface Window {
-    adsbygoogle: any[];
-  }
-}
 
 export default GoogleAdDisplay;

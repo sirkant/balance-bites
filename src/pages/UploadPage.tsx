@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -18,7 +17,6 @@ const UploadPage = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
-  // Check authentication status on component mount
   useEffect(() => {
     const checkAuth = async () => {
       setLoading(true);
@@ -30,7 +28,6 @@ const UploadPage = () => {
     checkAuth();
   }, []);
 
-  // Handle drag events
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -41,7 +38,6 @@ const UploadPage = () => {
     }
   };
 
-  // Triggers when file is dropped
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -57,7 +53,6 @@ const UploadPage = () => {
     }
   };
 
-  // Triggers when file is selected with click
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.preventDefault();
     if (e.target.files && e.target.files[0]) {
@@ -65,9 +60,7 @@ const UploadPage = () => {
     }
   };
 
-  // Handle the selected file
   const handleFile = (file: File) => {
-    // Check if file is an image
     if (!file.type.match('image.*')) {
       toast({
         title: "Invalid file type",
@@ -77,7 +70,6 @@ const UploadPage = () => {
       return;
     }
     
-    // Check file size (limit to 10MB)
     if (file.size > 10 * 1024 * 1024) {
       toast({
         title: "File too large",
@@ -97,7 +89,6 @@ const UploadPage = () => {
     reader.readAsDataURL(file);
   };
 
-  // Open the file selection dialog
   const onButtonClick = () => {
     if (!isAuthenticated) {
       navigateToAuth();
@@ -109,7 +100,6 @@ const UploadPage = () => {
     }
   };
 
-  // Navigate to authentication page
   const navigateToAuth = () => {
     toast({
       title: "Authentication Required",
@@ -119,7 +109,6 @@ const UploadPage = () => {
     navigate('/auth');
   };
 
-  // Clear the selected image
   const clearImage = () => {
     setPreview(null);
     setFileName('');
@@ -128,7 +117,6 @@ const UploadPage = () => {
     }
   };
 
-  // Handle upload and analysis
   const handleAnalyze = async () => {
     if (!preview || !isAuthenticated) {
       if (!isAuthenticated) {
@@ -146,7 +134,8 @@ const UploadPage = () => {
         throw new Error('You need to be logged in');
       }
 
-      // Upload to the meal analysis endpoint
+      console.log("Uploading meal image for analysis...");
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/meals`,
         {
@@ -166,15 +155,23 @@ const UploadPage = () => {
         throw new Error(errorData.error || 'Failed to upload meal');
       }
 
+      const mealData = await response.json();
+      console.log("Meal uploaded successfully:", mealData);
+
       toast({
         title: "Success!",
         description: "Your meal photo has been uploaded and analyzed.",
         variant: "default"
       });
 
-      // Navigate to results
-      navigate('/results');
+      navigate('/results', { 
+        state: { 
+          mealData: mealData,
+          mealId: mealData.id
+        } 
+      });
     } catch (error: any) {
+      console.error("Upload error:", error);
       toast({
         title: "Upload Failed",
         description: error.message || "Something went wrong with the upload",

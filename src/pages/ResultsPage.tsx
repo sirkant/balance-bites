@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Header from '@/components/Header';
@@ -13,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface LocationState {
   mealData?: any;
+  mealId?: string;
 }
 
 const ResultsPage = () => {
@@ -36,12 +36,74 @@ const ResultsPage = () => {
         return;
       }
       
-      // Check if meal data was passed via navigation state
       if (state?.mealData) {
+        console.log("Using meal data from navigation state");
         setMeal(state.mealData);
         setLoading(false);
+      } else if (state?.mealId) {
+        console.log("Fetching meal with ID:", state.mealId);
+        fetchMealById(state.mealId, data.session.access_token);
       } else {
-        // If no meal data was passed, redirect to upload page
+        console.log("No meal data in state, fetching most recent meal");
+        fetchMostRecentMeal(data.session.access_token);
+      }
+    };
+
+    checkAuth();
+  }, [navigate, state, toast]);
+
+  const fetchMealById = async (mealId: string, token: string) => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/meals?id=${mealId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch meal');
+      }
+
+      const mealData = await response.json();
+      setMeal(mealData);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching meal by ID:', error);
+      toast({
+        variant: "destructive",
+        title: "Error loading meal",
+        description: "Could not retrieve the meal data. Please try again."
+      });
+      setLoading(false);
+    }
+  };
+
+  const fetchMostRecentMeal = async (token: string) => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/meals`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch meals');
+      }
+
+      const meals = await response.json();
+      if (meals && meals.length > 0) {
+        const mostRecentMeal = meals[0];
+        setMeal(mostRecentMeal);
+        setLoading(false);
+      } else {
         toast({
           variant: "destructive",
           title: "No meal data found",
@@ -49,10 +111,16 @@ const ResultsPage = () => {
         });
         navigate('/upload', { replace: true });
       }
-    };
-
-    checkAuth();
-  }, [navigate, state, toast]);
+    } catch (error) {
+      console.error('Error fetching most recent meal:', error);
+      toast({
+        variant: "destructive",
+        title: "Error loading meal data",
+        description: "Could not retrieve meal data. Please try again."
+      });
+      setLoading(false);
+    }
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
