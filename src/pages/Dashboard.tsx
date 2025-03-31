@@ -1,12 +1,12 @@
 
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { UploadCloud, LogOut } from 'lucide-react';
+import { UploadCloud, LogOut, PieChart, Eye } from 'lucide-react';
 
 interface Meal {
   id: string;
@@ -131,6 +131,8 @@ const Dashboard = () => {
           throw new Error(errorData.error || 'Failed to upload meal');
         }
 
+        const mealData = await response.json();
+
         toast({
           title: 'Success!',
           description: 'Your meal has been uploaded and analyzed.',
@@ -141,8 +143,8 @@ const Dashboard = () => {
         const fileInput = document.getElementById('meal-image') as HTMLInputElement;
         if (fileInput) fileInput.value = '';
 
-        // Refresh meals list
-        fetchMeals();
+        // Navigate to results page with the meal data
+        navigate('/results', { state: { mealData } });
       };
 
       reader.onerror = (error) => {
@@ -172,6 +174,10 @@ const Dashboard = () => {
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  const viewMealDetails = (meal: Meal) => {
+    navigate('/results', { state: { mealData: meal } });
   };
 
   return (
@@ -277,6 +283,26 @@ const Dashboard = () => {
                       </div>
                     </div>
                   </CardContent>
+                  <CardFooter className="flex justify-between">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => viewMealDetails(meal)}
+                    >
+                      <Eye className="mr-2 h-4 w-4" />
+                      View Details
+                    </Button>
+                    <Button 
+                      variant="secondary" 
+                      size="sm"
+                      asChild
+                    >
+                      <Link to="/upload">
+                        <PieChart className="mr-2 h-4 w-4" />
+                        New Analysis
+                      </Link>
+                    </Button>
+                  </CardFooter>
                 </Card>
               ))}
             </div>

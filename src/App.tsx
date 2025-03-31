@@ -12,6 +12,7 @@ import { RenderTest } from "./utils/renderTest";
 import { supabase } from "@/integrations/supabase/client";
 import GoogleAdsScript from "@/components/GoogleAdsScript";
 import UploadPage from "./pages/UploadPage";
+import ResultsPage from "./pages/ResultsPage";
 
 // Create a client
 const queryClient = new QueryClient();
@@ -76,6 +77,7 @@ function App() {
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/upload" element={<UploadPage />} />
+            <Route path="/results" element={<ResultsPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

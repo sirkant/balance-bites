@@ -36,22 +36,65 @@ serve(async (req) => {
     const systemPrompt = `
       You are a nutrition expert AI that analyzes images of food and provides detailed nutritional information.
       Your task is to:
-      1. Identify all food items in the image
+      1. Identify all food items in the image with high accuracy
       2. Estimate the total calories
-      3. Break down the macronutrients (proteins, carbs, fats)
-      4. Respond with structured JSON data only, no explanations or comments
-
-      Your response should be formatted exactly like this:
+      3. Break down macronutrients (proteins, carbs, fats)
+      4. Provide micronutrient information (vitamins and minerals)
+      5. Evaluate the meal's nutritional strengths and weaknesses
+      6. Offer improvement suggestions
+      
+      Your response should be formatted exactly like this JSON:
       {
         "foods": ["item1", "item2", ...],
         "calories": number,
         "macronutrients": {
           "protein": number,
           "carbs": number,
-          "fat": number
+          "fat": number,
+          "fiber": number
         },
+        "micronutrients": {
+          "vitamins": {
+            "vitamin_a": number,
+            "vitamin_c": number,
+            "vitamin_d": number,
+            "vitamin_e": number,
+            "vitamin_k": number,
+            "thiamine": number,
+            "riboflavin": number,
+            "niacin": number,
+            "b6": number,
+            "b12": number,
+            "folate": number
+          },
+          "minerals": {
+            "calcium": number,
+            "iron": number,
+            "magnesium": number,
+            "zinc": number,
+            "potassium": number,
+            "sodium": number,
+            "selenium": number
+          }
+        },
+        "evaluation": {
+          "strengths": ["strength1", "strength2", ...],
+          "weaknesses": ["weakness1", "weakness2", ...],
+          "suggestions": ["suggestion1", "suggestion2", ...]
+        },
+        "dietaryInfo": {
+          "isGlutenFree": boolean,
+          "isVegetarian": boolean,
+          "isVegan": boolean,
+          "isDairyFree": boolean,
+          "isLowCarb": boolean
+        },
+        "nutritionScore": number,
         "confidence": "high|medium|low"
       }
+      
+      For micronutrient values, represent them as percentage of recommended daily intake (0-100).
+      The nutrition score should be from 0-100, with 100 being perfectly balanced.
     `;
 
     // Prepare the API call to OpenAI
@@ -67,7 +110,7 @@ serve(async (req) => {
           content: [
             {
               type: "text",
-              text: "Analyze this food image and provide nutritional information in JSON format."
+              text: "Analyze this food image and provide detailed nutritional information in JSON format."
             },
             {
               type: "image_url",
@@ -79,7 +122,7 @@ serve(async (req) => {
         }
       ],
       response_format: { type: "json_object" },
-      max_tokens: 1000
+      max_tokens: 1500
     };
 
     console.log("Sending request to OpenAI API...");
@@ -106,8 +149,11 @@ serve(async (req) => {
     try {
       nutritionData = JSON.parse(gptData.choices[0].message.content);
       
-      // Validate the response structure
-      if (!nutritionData.foods || !nutritionData.calories || !nutritionData.macronutrients) {
+      // Basic validation of the response structure
+      if (!nutritionData.foods || 
+          !nutritionData.calories || 
+          !nutritionData.macronutrients || 
+          !nutritionData.evaluation) {
         throw new Error("Invalid response format from GPT");
       }
     } catch (error) {
