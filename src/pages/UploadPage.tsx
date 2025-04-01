@@ -135,9 +135,15 @@ const UploadPage = () => {
       }
 
       console.log("Uploading meal image for analysis...");
-
+      
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      
+      if (!supabaseUrl) {
+        throw new Error('Supabase URL not configured');
+      }
+      
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/meals`,
+        `${supabaseUrl}/functions/v1/meals`,
         {
           method: 'POST',
           headers: {
@@ -149,6 +155,13 @@ const UploadPage = () => {
           }),
         }
       );
+      
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const textResponse = await response.text();
+        console.error('Non-JSON response:', textResponse);
+        throw new Error('Server returned non-JSON response');
+      }
 
       if (!response.ok) {
         const errorData = await response.json();

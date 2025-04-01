@@ -14,7 +14,7 @@ const GoogleAdDisplay = ({
   responsive = true,
   className = ''
 }: GoogleAdDisplayProps) => {
-  const adRef = useRef<HTMLElement>(null);
+  const adRef = useRef<HTMLInsElement>(null);
   
   useEffect(() => {
     try {
