@@ -7,6 +7,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import LoadingAnimation from '@/components/LoadingAnimation';
 
 const UploadPage = () => {
   const [dragActive, setDragActive] = useState(false);
@@ -138,7 +139,7 @@ const UploadPage = () => {
       console.log("Uploading meal image for analysis...");
       
       // Get the URL from the supabase client to ensure it's always correct
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseUrl = supabase.supabaseUrl;
       
       if (!supabaseUrl) {
         throw new Error('Supabase URL not configured');
@@ -240,6 +241,10 @@ const UploadPage = () => {
                   <Button onClick={navigateToAuth} className="mx-auto">
                     Sign In or Create Account
                   </Button>
+                </div>
+              ) : isUploading ? (
+                <div className="border-2 border-dashed rounded-xl p-8 border-green-400 bg-green-50/30">
+                  <LoadingAnimation />
                 </div>
               ) : (
                 <div 

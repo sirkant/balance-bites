@@ -1,246 +1,164 @@
 
-// Supabase Edge Function for meal image analysis using OpenAI's GPT-4o-mini
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+// Mock data to return when no API key is available
+const generateMockAnalysis = (imageUrl: string) => {
+  console.log("Generating mock analysis for image:", imageUrl);
+  
+  // Create randomized nutrition values for testing
+  const calories = Math.floor(Math.random() * 400) + 300; // 300-700 calories
+  const proteins = Math.floor(Math.random() * 30) + 15; // 15-45g proteins
+  const carbs = Math.floor(Math.random() * 50) + 30; // 30-80g carbs
+  const fats = Math.floor(Math.random() * 20) + 5; // 5-25g fats
+  const nutritionScore = Math.floor(Math.random() * 40) + 50; // 50-90 score
+  
+  // Array of possible foods to randomly select from
+  const possibleFoods = [
+    "Grilled chicken breast", 
+    "Steamed rice", 
+    "Mixed vegetables", 
+    "Salad with olive oil", 
+    "Pasta with tomato sauce",
+    "Roasted potatoes",
+    "Salmon fillet",
+    "Avocado",
+    "Quinoa",
+    "Greek yogurt",
+    "Sweet potato"
+  ];
+  
+  // Select 2-4 random foods
+  const foodCount = Math.floor(Math.random() * 3) + 2;
+  const selectedFoods = [];
+  for (let i = 0; i < foodCount; i++) {
+    const randomIndex = Math.floor(Math.random() * possibleFoods.length);
+    selectedFoods.push(possibleFoods[randomIndex]);
+    possibleFoods.splice(randomIndex, 1); // Remove selected food
+  }
+  
+  return {
+    foods: selectedFoods,
+    calories: `${calories}kcal`,
+    macros: {
+      proteins: `${proteins}g`,
+      carbohydrates: `${carbs}g`,
+      fats: `${fats}g`,
+      fiber: `${Math.floor(Math.random() * 8) + 2}g`
+    },
+    nutritionScore: nutritionScore,
+    nutritionalAnalysis: "This is a balanced meal with a good mix of proteins, carbohydrates, and healthy fats. It provides essential nutrients and energy to fuel your body.",
+    healthInsights: [
+      "Good source of lean protein",
+      "Contains complex carbohydrates for sustained energy",
+      "Provides dietary fiber for digestive health",
+      "Contains essential vitamins and minerals"
+    ],
+    improvementSuggestions: [
+      "Consider adding more vegetables for additional fiber and micronutrients",
+      "Include a source of healthy fats like avocado or olive oil",
+      "Ensure portion sizes align with your dietary goals"
+    ]
+  };
 };
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, {
+      headers: corsHeaders
+    });
   }
 
   try {
-    // Get OpenAI API key from environment variables
+    // Get the OpenAI API Key from environment variable
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-
-    // Parse request body
-    const { imageBase64, imageUrl } = await req.json();
-
-    if (!imageBase64 && !imageUrl) {
-      return new Response(
-        JSON.stringify({ error: 'Either imageBase64 or imageUrl is required' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
+    
+    // Parse the request body to get the image URL
+    const { imageUrl } = await req.json();
+    
+    if (!imageUrl) {
+      throw new Error('No image URL provided');
     }
-
-    // If no API key is set, return a demo/mock analysis
+    
+    let analysis;
+    
     if (!openAIApiKey) {
-      console.log("No OpenAI API key found. Providing demo analysis response.");
+      console.log('OPENAI_API_KEY is not set in environment variables, using mock response');
+      // Generate mock data for testing without API key
+      analysis = generateMockAnalysis(imageUrl);
+    } else {
+      // If we have an API key, make the actual API call to OpenAI
+      console.log('Using OpenAI API to analyze image');
       
-      // Create a realistic demo response
-      const demoNutritionData = {
-        "foods": ["Chicken breast", "Brown rice", "Broccoli", "Olive oil"],
-        "calories": 420,
-        "macronutrients": {
-          "protein": 35,
-          "carbs": 45,
-          "fat": 15,
-          "fiber": 6
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${openAIApiKey}`
         },
-        "micronutrients": {
-          "vitamins": {
-            "vitamin_a": 25,
-            "vitamin_c": 80,
-            "vitamin_d": 5,
-            "vitamin_e": 10,
-            "vitamin_k": 45,
-            "thiamine": 20,
-            "riboflavin": 15,
-            "niacin": 40,
-            "b6": 25,
-            "b12": 30,
-            "folate": 15
-          },
-          "minerals": {
-            "calcium": 8,
-            "iron": 15,
-            "magnesium": 20,
-            "zinc": 25,
-            "potassium": 15,
-            "sodium": 10,
-            "selenium": 30
-          }
-        },
-        "evaluation": {
-          "strengths": [
-            "High in protein for muscle maintenance",
-            "Good source of fiber from vegetables",
-            "Contains healthy fats from olive oil",
-            "Excellent source of vitamin C"
-          ],
-          "weaknesses": [
-            "Could include more diverse vegetables for broader nutrient profile",
-            "Relatively low in calcium",
-            "Could use more vitamin D"
-          ],
-          "suggestions": [
-            "Consider adding some leafy greens for more vitamins K and A",
-            "Add a small portion of dairy or fortified plant milk for calcium",
-            "Include some nuts or seeds for more healthy fats and minerals"
-          ]
-        },
-        "dietaryInfo": {
-          "isGlutenFree": true,
-          "isVegetarian": false,
-          "isVegan": false,
-          "isDairyFree": true,
-          "isLowCarb": false
-        },
-        "nutritionScore": 78,
-        "confidence": "medium"
-      };
-
-      return new Response(
-        JSON.stringify({ analysis: demoNutritionData }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // If OpenAI API key exists, use the original code
-    const systemPrompt = `
-      You are a nutrition expert AI that analyzes images of food and provides detailed nutritional information.
-      Your task is to:
-      1. Identify all food items in the image with high accuracy
-      2. Estimate the total calories
-      3. Break down macronutrients (proteins, carbs, fats)
-      4. Provide micronutrient information (vitamins and minerals)
-      5. Evaluate the meal's nutritional strengths and weaknesses
-      6. Offer improvement suggestions
-      
-      Your response should be formatted exactly like this JSON:
-      {
-        "foods": ["item1", "item2", ...],
-        "calories": number,
-        "macronutrients": {
-          "protein": number,
-          "carbs": number,
-          "fat": number,
-          "fiber": number
-        },
-        "micronutrients": {
-          "vitamins": {
-            "vitamin_a": number,
-            "vitamin_c": number,
-            "vitamin_d": number,
-            "vitamin_e": number,
-            "vitamin_k": number,
-            "thiamine": number,
-            "riboflavin": number,
-            "niacin": number,
-            "b6": number,
-            "b12": number,
-            "folate": number
-          },
-          "minerals": {
-            "calcium": number,
-            "iron": number,
-            "magnesium": number,
-            "zinc": number,
-            "potassium": number,
-            "sodium": number,
-            "selenium": number
-          }
-        },
-        "evaluation": {
-          "strengths": ["strength1", "strength2", ...],
-          "weaknesses": ["weakness1", "weakness2", ...],
-          "suggestions": ["suggestion1", "suggestion2", ...]
-        },
-        "dietaryInfo": {
-          "isGlutenFree": boolean,
-          "isVegetarian": boolean,
-          "isVegan": boolean,
-          "isDairyFree": boolean,
-          "isLowCarb": boolean
-        },
-        "nutritionScore": number,
-        "confidence": "high|medium|low"
-      }
-      
-      For micronutrient values, represent them as percentage of recommended daily intake (0-100).
-      The nutrition score should be from 0-100, with 100 being perfectly balanced.
-    `;
-
-    // Prepare the API call to OpenAI
-    const payload = {
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: systemPrompt
-        },
-        {
-          role: "user",
-          content: [
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
             {
-              type: "text",
-              text: "Analyze this food image and provide detailed nutritional information in JSON format."
+              role: 'system',
+              content: 'You are a nutritionist expert that analyzes food images and provides detailed nutritional information.'
             },
             {
-              type: "image_url",
-              image_url: {
-                url: imageBase64 || imageUrl
-              }
+              role: 'user',
+              content: [
+                { type: 'text', text: 'Analyze this meal image and provide detailed nutritional information in the following JSON format: { "foods": ["list of identified food items"], "calories": "total calories (e.g. 450kcal)", "macros": { "proteins": "amount in grams", "carbohydrates": "amount in grams", "fats": "amount in grams", "fiber": "amount in grams" }, "nutritionScore": number from 0-100, "nutritionalAnalysis": "brief paragraph with overall nutritional assessment", "healthInsights": ["list of 3-4 nutritional benefits"], "improvementSuggestions": ["list of 2-3 suggestions to improve nutritional value"] }' },
+                { type: 'image_url', image_url: { url: imageUrl } }
+              ]
             }
-          ]
-        }
-      ],
-      response_format: { type: "json_object" },
-      max_tokens: 1500
-    };
+          ],
+          max_tokens: 1500,
+          temperature: 0.5,
+          response_format: { type: 'json_object' }
+        })
+      });
 
-    console.log("Sending request to OpenAI API...");
-    const gptResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${openAIApiKey}`
-      },
-      body: JSON.stringify(payload)
-    });
-
-    if (!gptResponse.ok) {
-      const errorData = await gptResponse.json();
-      console.error("OpenAI API error:", errorData);
-      throw new Error(`OpenAI API error: ${errorData.error?.message || 'Unknown error'}`);
-    }
-
-    const gptData = await gptResponse.json();
-    console.log("Received response from OpenAI");
-
-    // Parse the GPT response
-    let nutritionData;
-    try {
-      nutritionData = JSON.parse(gptData.choices[0].message.content);
-      
-      // Basic validation of the response structure
-      if (!nutritionData.foods || 
-          !nutritionData.calories || 
-          !nutritionData.macronutrients || 
-          !nutritionData.evaluation) {
-        throw new Error("Invalid response format from GPT");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`OpenAI API error: ${errorData.error?.message || 'Unknown error'}`);
       }
-    } catch (error) {
-      console.error("Failed to parse GPT response:", error);
-      throw new Error("Failed to parse nutrition data from AI response");
+
+      const data = await response.json();
+      const content = data.choices[0].message.content;
+      
+      // Parse the JSON response from OpenAI
+      analysis = JSON.parse(content);
     }
 
-    // Return the structured nutrition data
+    // Return the analysis
     return new Response(
-      JSON.stringify({ analysis: nutritionData }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ analysis }),
+      {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
+      }
     );
-
   } catch (error) {
-    console.error("Error in meal-analysis function:", error);
+    console.error('Error in meal-analysis function:', error);
+    
     return new Response(
-      JSON.stringify({ error: error.message || "An unexpected error occurred" }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      JSON.stringify({
+        error: 'Failed to analyze meal',
+        details: error.message
+      }),
+      {
+        status: 500,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
+      }
     );
   }
-});
+})

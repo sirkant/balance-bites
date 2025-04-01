@@ -14,7 +14,7 @@ const GoogleAdDisplay = ({
   responsive = true,
   className = ''
 }: GoogleAdDisplayProps) => {
-  const adRef = useRef<HTMLDivElement>(null);
+  const adRef = useRef<HTMLDivElement | null>(null);
   
   useEffect(() => {
     try {
@@ -33,11 +33,7 @@ const GoogleAdDisplay = ({
   return (
     <div className={className}>
       <ins
-        ref={(element) => {
-          if (adRef.current) {
-            adRef.current = element as HTMLDivElement;
-          }
-        }}
+        ref={adRef}
         className={`adsbygoogle ${responsive ? 'adsbygoogle-responsive' : ''}`}
         style={{ display: 'block' }}
         data-ad-client={import.meta.env.VITE_GOOGLE_AD_CLIENT || 'ca-pub-placeholder'}
