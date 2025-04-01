@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -136,6 +137,7 @@ const UploadPage = () => {
 
       console.log("Uploading meal image for analysis...");
       
+      // Get the URL from the supabase client to ensure it's always correct
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       
       if (!supabaseUrl) {

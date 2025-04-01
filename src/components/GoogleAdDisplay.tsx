@@ -33,7 +33,11 @@ const GoogleAdDisplay = ({
   return (
     <div className={className}>
       <ins
-        ref={adRef as React.RefObject<HTMLModElement>}
+        ref={(element) => {
+          if (adRef.current) {
+            adRef.current = element as HTMLDivElement;
+          }
+        }}
         className={`adsbygoogle ${responsive ? 'adsbygoogle-responsive' : ''}`}
         style={{ display: 'block' }}
         data-ad-client={import.meta.env.VITE_GOOGLE_AD_CLIENT || 'ca-pub-placeholder'}
