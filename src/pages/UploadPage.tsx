@@ -136,11 +136,13 @@ const UploadPage = () => {
 
       console.log("Uploading meal image for analysis...");
       
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseUrl = supabase.supabaseUrl;
       
       if (!supabaseUrl) {
         throw new Error('Supabase URL not configured');
       }
+      
+      console.log("Using Supabase URL:", supabaseUrl);
       
       const response = await fetch(
         `${supabaseUrl}/functions/v1/meals`,
