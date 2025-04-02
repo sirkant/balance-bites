@@ -1,69 +1,128 @@
-# Welcome to your Lovable project
 
-## Project info
+# NutriVision: AI-Powered Meal Analysis
 
-**URL**: https://lovable.dev/projects/8748756a-5542-413f-808a-419dc3ea6da1
+## Project Overview
 
-## How can I edit this code?
+NutriVision is an AI-powered web application that analyzes photos of meals and provides detailed nutritional information. Users simply take a photo of their food, and our AI instantly identifies the items and returns comprehensive nutritional data including calories, macronutrients, and more.
 
-There are several ways of editing your application.
+### Key Features
 
-**Use Lovable**
+- **Instant Meal Analysis**: Upload photos and get immediate AI-powered nutritional analysis
+- **Nutritional Breakdown**: Detailed information on calories, protein, carbs, fats, and vitamins
+- **Meal History**: Track and review past meals for better diet awareness
+- **User Accounts**: Secure authentication system to store user data and meal history
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/8748756a-5542-413f-808a-419dc3ea6da1) and start prompting.
+## Business Model
 
-Changes made via Lovable will be committed automatically to this repo.
+NutriVision operates on a freemium business model with two tiers:
 
-**Use your preferred IDE**
+### Free Tier (Ad-supported)
+- Limited meal analyses per month
+- Basic nutritional information (calories and macros)
+- Ad-supported experience
+- Limited meal history storage
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Premium Tier
+- Unlimited meal analyses
+- Advanced nutritional breakdown (micronutrients, vitamins, minerals)
+- Ad-free experience
+- Unlimited meal history storage
+- Personalized nutrition recommendations
+- Diet tracking and goal setting
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Setup Instructions
 
-Follow these steps:
+### Prerequisites
+
+- Node.js (v18 or higher)
+- npm or yarn
+- Supabase account for backend services
+
+### Environment Variables
+
+Create a `.env` file in the root directory with the following variables:
+
+```
+# Supabase Configuration
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# Optional: OpenAI API Key (for production)
+VITE_OPENAI_API_KEY=your_openai_api_key
+
+# Optional: Google AdSense Client ID (for ad-supported tier)
+VITE_GOOGLE_AD_CLIENT=your_google_ad_client_id
+```
+
+### Installation
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Clone the repository
+git clone <repository-url>
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Navigate to the project directory
+cd nutrivision
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Install dependencies
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start the development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Backend Setup
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+1. Create a Supabase project at [supabase.com](https://supabase.com)
+2. Set up the database tables and edge functions using the provided SQL and TypeScript files in the `supabase` directory
+3. Configure authentication providers in the Supabase dashboard
+4. Update environment variables with your Supabase project details
 
-**Use GitHub Codespaces**
+## User Flows
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Account Creation
+1. User visits the homepage
+2. User clicks "Sign Up" or "Get Started"
+3. User enters email and password
+4. User receives confirmation email (optional - can be disabled in testing)
+5. User confirms email and is redirected to dashboard
 
-## What technologies are used for this project?
+### Meal Upload & Analysis
+1. User logs into their account
+2. User navigates to the Upload page
+3. User uploads a photo of their meal (via drag-and-drop or file browser)
+4. System displays loading animation while processing the image
+5. AI analyzes the image and identifies food items
+6. System calculates nutritional information
+7. Results are displayed to the user with detailed breakdown
+8. Meal information is stored in the user's history
 
-This project is built with .
+### Viewing Meal History
+1. User logs into their account
+2. User navigates to the Dashboard
+3. System displays all previously analyzed meals
+4. User can click on any meal to view detailed nutritional information
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+### Premium Subscription Management
+1. User logs into their account
+2. User navigates to their Profile or Settings page
+3. User selects "Upgrade to Premium"
+4. User completes payment process
+5. Account is upgraded to premium with additional features unlocked
 
-## How can I deploy this project?
+## Development Resources
 
-Simply open [Lovable](https://lovable.dev/projects/8748756a-5542-413f-808a-419dc3ea6da1) and click on Share -> Publish.
+- [Supabase Dashboard](https://app.supabase.com): Manage your backend, database, and authentication
+- [Vite Documentation](https://vitejs.dev/): Learn about the build tool
+- [React Documentation](https://reactjs.org/): Learn about the frontend framework
+- [Tailwind CSS Documentation](https://tailwindcss.com/): Learn about the styling framework
+- [TypeScript Documentation](https://www.typescriptlang.org/): Learn about the programming language
 
-## I want to use a custom domain - is that possible?
+## Deploying to Production
 
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+To deploy NutriVision to production:
+
+1. Set up all required environment variables in your hosting platform
+2. Build the production bundle: `npm run build`
+3. Deploy the built files to your hosting provider of choice
+
+For automated deployments, you can use the built-in deployment features in Lovable or connect your project to a service like Vercel, Netlify, or GitHub Pages.
