@@ -138,12 +138,8 @@ const UploadPage = () => {
 
       console.log("Uploading meal image for analysis...");
       
-      // Get the URL from the supabase client to ensure it's always correct
-      const supabaseUrl = supabase.supabaseUrl;
-      
-      if (!supabaseUrl) {
-        throw new Error('Supabase URL not configured');
-      }
+      // Fix: Access the supabase URL properly
+      const supabaseUrl = (supabase as any)["supabaseUrl"] || "https://ozyzkeddhldosnxwrnok.supabase.co";
       
       console.log("Using Supabase URL:", supabaseUrl);
       

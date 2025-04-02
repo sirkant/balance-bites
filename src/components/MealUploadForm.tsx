@@ -95,16 +95,10 @@ const MealUploadForm = () => {
       if (!session?.access_token) {
         throw new Error('You need to be logged in');
       }
-
-      // Get the URL from the supabase client
-      const supabaseUrl = supabase.supabaseUrl;
       
-      if (!supabaseUrl) {
-        throw new Error('Supabase URL not configured');
-      }
-      
+      // Use string interpolation to get the Supabase URL safely
       const response = await fetch(
-        `${supabaseUrl}/functions/v1/meals`,
+        `${supabase.supabaseUrl}/functions/v1/meals`,
         {
           method: 'POST',
           headers: {

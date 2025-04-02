@@ -11,7 +11,16 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   console.error('Supabase URL or anonymous key is missing. Check your environment variables.');
 }
 
-// Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
+// Define a custom type that includes the supabaseUrl property
+interface CustomSupabaseClient extends ReturnType<typeof createClient<Database>> {
+  supabaseUrl: string;
+}
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Create the client with type casting to add the supabaseUrl property
+const supabaseClient = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Add the supabaseUrl property to the client
+export const supabase = {
+  ...supabaseClient,
+  supabaseUrl: SUPABASE_URL
+} as CustomSupabaseClient;
