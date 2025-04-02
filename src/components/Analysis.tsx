@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -78,11 +77,23 @@ interface Evaluation {
 interface MealAnalysisData {
   foods: string[];
   calories: number;
-  macronutrients: MacronutrientData;
+  macronutrients?: MacronutrientData;
+  macros?: {
+    proteins?: string | number;
+    protein?: string | number;
+    carbohydrates?: string | number;
+    carbs?: string | number;
+    fats?: string | number;
+    fat?: string | number;
+    fiber?: string | number;
+  };
   micronutrients?: MicronutrientData;
   dietaryInfo?: DietaryInfo;
   evaluation?: Evaluation;
   nutritionScore?: number;
+  healthInsights?: string[];
+  improvementSuggestions?: string[];
+  nutritionalAnalysis?: string;
   confidence: 'high' | 'medium' | 'low';
 }
 
@@ -90,7 +101,6 @@ interface AnalysisProps {
   mealAnalysis: MealAnalysisData;
 }
 
-// Component to display a metric with visual indicator
 const NutrientMetric = ({ 
   name, 
   value, 
@@ -144,12 +154,20 @@ const NutrientMetric = ({
   );
 };
 
-// Format the name for display
 const formatNutrientName = (name: string): string => {
   return name
     .split('_')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
+};
+
+const parseMacroValue = (value: string | number | undefined): number => {
+  if (value === undefined) return 0;
+  
+  if (typeof value === 'number') return value;
+  
+  const numericPart = parseFloat(value.toString().replace(/[^0-9.]/g, ''));
+  return isNaN(numericPart) ? 0 : numericPart;
 };
 
 const Analysis = ({ mealAnalysis }: AnalysisProps) => {
@@ -158,29 +176,44 @@ const Analysis = ({ mealAnalysis }: AnalysisProps) => {
     minerals: false
   });
   
-  // Transform macronutrient data for charts
+  let protein = 0;
+  let carbs = 0;
+  let fat = 0;
+  let fiber = 0;
+
+  if (mealAnalysis.macronutrients) {
+    protein = mealAnalysis.macronutrients.protein;
+    carbs = mealAnalysis.macronutrients.carbs;
+    fat = mealAnalysis.macronutrients.fat;
+    fiber = mealAnalysis.macronutrients.fiber || 0;
+  } 
+  else if (mealAnalysis.macros) {
+    protein = parseMacroValue(mealAnalysis.macros.proteins || mealAnalysis.macros.protein);
+    carbs = parseMacroValue(mealAnalysis.macros.carbohydrates || mealAnalysis.macros.carbs);
+    fat = parseMacroValue(mealAnalysis.macros.fats || mealAnalysis.macros.fat);
+    fiber = parseMacroValue(mealAnalysis.macros.fiber);
+  }
+  
   const macroData = [
-    { name: 'Protein', value: mealAnalysis.macronutrients.protein, goal: 50, unit: 'g' },
-    { name: 'Carbs', value: mealAnalysis.macronutrients.carbs, goal: 300, unit: 'g' },
-    { name: 'Fat', value: mealAnalysis.macronutrients.fat, goal: 70, unit: 'g' },
+    { name: 'Protein', value: protein, goal: 50, unit: 'g' },
+    { name: 'Carbs', value: carbs, goal: 300, unit: 'g' },
+    { name: 'Fat', value: fat, goal: 70, unit: 'g' },
   ];
   
-  if (mealAnalysis.macronutrients.fiber !== undefined) {
-    macroData.push({ name: 'Fiber', value: mealAnalysis.macronutrients.fiber, goal: 25, unit: 'g' });
+  if (fiber > 0) {
+    macroData.push({ name: 'Fiber', value: fiber, goal: 25, unit: 'g' });
   }
   
-  // Transform data for pie chart
   const pieData = [
-    { name: 'Protein', value: mealAnalysis.macronutrients.protein, color: '#4f46e5' },
-    { name: 'Carbs', value: mealAnalysis.macronutrients.carbs, color: '#06b6d4' },
-    { name: 'Fat', value: mealAnalysis.macronutrients.fat, color: '#f59e0b' },
+    { name: 'Protein', value: protein, color: '#4f46e5' },
+    { name: 'Carbs', value: carbs, color: '#06b6d4' },
+    { name: 'Fat', value: fat, color: '#f59e0b' },
   ];
   
-  if (mealAnalysis.macronutrients.fiber !== undefined) {
-    pieData.push({ name: 'Fiber', value: mealAnalysis.macronutrients.fiber, color: '#10b981' });
+  if (fiber > 0) {
+    pieData.push({ name: 'Fiber', value: fiber, color: '#10b981' });
   }
   
-  // Create vitamin data for charts
   const vitaminsData = mealAnalysis.micronutrients?.vitamins ? 
     Object.entries(mealAnalysis.micronutrients.vitamins).map(([key, value]) => ({
       name: formatNutrientName(key),
@@ -189,7 +222,6 @@ const Analysis = ({ mealAnalysis }: AnalysisProps) => {
       unit: '%'
     })) : [];
   
-  // Create mineral data for charts
   const mineralsData = mealAnalysis.micronutrients?.minerals ? 
     Object.entries(mealAnalysis.micronutrients.minerals).map(([key, value]) => ({
       name: formatNutrientName(key),
@@ -205,7 +237,14 @@ const Analysis = ({ mealAnalysis }: AnalysisProps) => {
     }));
   };
 
-  // Get nutrient score or calculate from calories and macros if not provided
+  const strengths = mealAnalysis.evaluation?.strengths || 
+                    (mealAnalysis.healthInsights ? [...mealAnalysis.healthInsights] : []);
+  
+  const weaknesses = mealAnalysis.evaluation?.weaknesses || [];
+  
+  const suggestions = mealAnalysis.evaluation?.suggestions || 
+                     (mealAnalysis.improvementSuggestions ? [...mealAnalysis.improvementSuggestions] : []);
+
   const getNutritionGrade = () => {
     if (mealAnalysis.nutritionScore !== undefined) {
       const score = mealAnalysis.nutritionScore;
@@ -216,27 +255,33 @@ const Analysis = ({ mealAnalysis }: AnalysisProps) => {
       return { grade: 'F', color: 'bg-red-500', text: 'Poor' };
     }
     
-    // Fallback calculation
-    const proteinCal = mealAnalysis.macronutrients.protein * 4;
-    const carbsCal = mealAnalysis.macronutrients.carbs * 4;
-    const fatCal = mealAnalysis.macronutrients.fat * 9;
-    const totalCal = mealAnalysis.calories;
-    
-    const proteinRatio = proteinCal / totalCal;
-    const carbsRatio = carbsCal / totalCal;
-    const fatRatio = fatCal / totalCal;
-    
-    // Check for balanced macros (roughly 30% protein, 40% carbs, 30% fat)
-    const isBalanced = 
-      proteinRatio >= 0.2 && proteinRatio <= 0.35 &&
-      carbsRatio >= 0.35 && carbsRatio <= 0.55 && 
-      fatRatio >= 0.2 && fatRatio <= 0.35;
+    if (protein > 0 || carbs > 0 || fat > 0) {
+      const proteinCal = protein * 4;
+      const carbsCal = carbs * 4;
+      const fatCal = fat * 9;
+      const totalCal = mealAnalysis.calories;
       
-    if (isBalanced) return { grade: 'B', color: 'bg-green-500', text: 'Good' };
+      const proteinRatio = proteinCal / totalCal;
+      const carbsRatio = carbsCal / totalCal;
+      const fatRatio = fatCal / totalCal;
+      
+      const isBalanced = 
+        proteinRatio >= 0.2 && proteinRatio <= 0.35 &&
+        carbsRatio >= 0.35 && carbsRatio <= 0.55 && 
+        fatRatio >= 0.2 && fatRatio <= 0.35;
+        
+      if (isBalanced) return { grade: 'B', color: 'bg-green-500', text: 'Good' };
+      return { grade: 'C', color: 'bg-yellow-500', text: 'Average' };
+    }
+    
     return { grade: 'C', color: 'bg-yellow-500', text: 'Average' };
   };
   
   const nutritionGrade = getNutritionGrade();
+  
+  const caloriesValue = typeof mealAnalysis.calories === 'string' 
+    ? parseInt(mealAnalysis.calories.replace(/[^0-9]/g, '')) 
+    : mealAnalysis.calories;
   
   return (
     <div className="bg-white rounded-lg shadow-sm border p-6 animate-scale-in">
@@ -255,7 +300,6 @@ const Analysis = ({ mealAnalysis }: AnalysisProps) => {
         
         <div className="flex space-x-3 mt-4 md:mt-0">
           <Button variant="outline" size="sm" onClick={() => {
-            // Create a data URI for text download
             const dataStr = "data:text/json;charset=utf-8," + 
               encodeURIComponent(JSON.stringify(mealAnalysis, null, 2));
             const downloadAnchorNode = document.createElement('a');
@@ -271,13 +315,13 @@ const Analysis = ({ mealAnalysis }: AnalysisProps) => {
         </div>
       </div>
       
-      {mealAnalysis.evaluation?.suggestions && mealAnalysis.evaluation.suggestions.length > 0 && (
+      {(mealAnalysis.evaluation?.suggestions?.length > 0 || mealAnalysis.nutritionalAnalysis) && (
         <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-8 flex items-start">
           <Info className="h-5 w-5 text-blue-500 mr-3 mt-0.5 flex-shrink-0" />
           <div>
             <h4 className="font-medium mb-1">Analysis Summary</h4>
             <p className="text-sm text-muted-foreground">
-              {mealAnalysis.evaluation.suggestions[0]}
+              {mealAnalysis.evaluation?.suggestions?.[0] || mealAnalysis.nutritionalAnalysis}
             </p>
           </div>
         </div>
@@ -295,10 +339,10 @@ const Analysis = ({ mealAnalysis }: AnalysisProps) => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div className="bg-white rounded-lg border p-4 shadow-sm text-center">
               <h3 className="text-lg font-medium mb-1">Total Calories</h3>
-              <div className="text-3xl font-bold mb-2">{mealAnalysis.calories}</div>
+              <div className="text-3xl font-bold mb-2">{caloriesValue}</div>
               <p className="text-sm text-muted-foreground">
-                {mealAnalysis.calories < 300 ? 'Light meal' : 
-                 mealAnalysis.calories < 600 ? 'Balanced meal' : 'Heavy meal'}
+                {caloriesValue < 300 ? 'Light meal' : 
+                 caloriesValue < 600 ? 'Balanced meal' : 'Heavy meal'}
               </p>
             </div>
             
@@ -323,30 +367,34 @@ const Analysis = ({ mealAnalysis }: AnalysisProps) => {
             </div>
           </div>
           
-          <h3 className="text-xl font-semibold mb-4">Macronutrient Distribution</h3>
-          <div className="h-[300px] mb-8">
-            <ResponsiveContainer width="100%" height="100%">
-              <RechartsPieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={90}
-                  paddingAngle={3}
-                  dataKey="value"
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  labelLine={false}
-                >
-                  {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <RechartsTooltip formatter={(value) => [`${value}g`, 'Amount']} />
-                <Legend />
-              </RechartsPieChart>
-            </ResponsiveContainer>
-          </div>
+          {(protein > 0 || carbs > 0 || fat > 0) && (
+            <>
+              <h3 className="text-xl font-semibold mb-4">Macronutrient Distribution</h3>
+              <div className="h-[300px] mb-8">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsPieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={90}
+                      paddingAngle={3}
+                      dataKey="value"
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      labelLine={false}
+                    >
+                      {pieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip formatter={(value) => [`${value}g`, 'Amount']} />
+                    <Legend />
+                  </RechartsPieChart>
+                </ResponsiveContainer>
+              </div>
+            </>
+          )}
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div>
@@ -387,63 +435,77 @@ const Analysis = ({ mealAnalysis }: AnalysisProps) => {
         </TabsContent>
         
         <TabsContent value="macros">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            {macroData.map((item) => (
-              <NutrientMetric
-                key={item.name}
-                name={item.name}
-                value={item.value}
-                goal={item.goal}
-                unit={item.unit}
-              />
-            ))}
-          </div>
+          {macroData.length > 0 && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                {macroData.map((item) => (
+                  <NutrientMetric
+                    key={item.name}
+                    name={item.name}
+                    value={item.value}
+                    goal={item.goal}
+                    unit={item.unit}
+                  />
+                ))}
+              </div>
+              
+              <h3 className="text-xl font-semibold mb-4 flex items-center">
+                <BarChart className="mr-2 h-5 w-5 text-primary" />
+                Macronutrients Progress
+              </h3>
+              
+              <div className="h-[300px] mb-6">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsBarChart data={macroData} barGap={4}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <RechartsTooltip 
+                      formatter={(value, name, props) => {
+                        if (name === 'value') return [`${value}${props.payload.unit}`, 'Current'];
+                        if (name === 'goal') return [`${value}${props.payload.unit}`, 'Target'];
+                        return [value, name];
+                      }}
+                    />
+                    <Legend />
+                    <Bar 
+                      name="Current" 
+                      dataKey="value" 
+                      fill="#4f46e5" 
+                      radius={[4, 4, 0, 0]} 
+                    />
+                    <Bar 
+                      name="Target" 
+                      dataKey="goal" 
+                      fill="#94a3b8" 
+                      radius={[4, 4, 0, 0]} 
+                      opacity={0.4} 
+                    />
+                  </RechartsBarChart>
+                </ResponsiveContainer>
+              </div>
+            </>
+          )}
           
-          <h3 className="text-xl font-semibold mb-4 flex items-center">
-            <BarChart className="mr-2 h-5 w-5 text-primary" />
-            Macronutrients Progress
-          </h3>
-          
-          <div className="h-[300px] mb-6">
-            <ResponsiveContainer width="100%" height="100%">
-              <RechartsBarChart data={macroData} barGap={4}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <RechartsTooltip 
-                  formatter={(value, name, props) => {
-                    if (name === 'value') return [`${value}${props.payload.unit}`, 'Current'];
-                    if (name === 'goal') return [`${value}${props.payload.unit}`, 'Target'];
-                    return [value, name];
-                  }}
-                />
-                <Legend />
-                <Bar 
-                  name="Current" 
-                  dataKey="value" 
-                  fill="#4f46e5" 
-                  radius={[4, 4, 0, 0]} 
-                />
-                <Bar 
-                  name="Target" 
-                  dataKey="goal" 
-                  fill="#94a3b8" 
-                  radius={[4, 4, 0, 0]} 
-                  opacity={0.4} 
-                />
-              </RechartsBarChart>
-            </ResponsiveContainer>
-          </div>
-          
-          {mealAnalysis.evaluation?.weaknesses && mealAnalysis.evaluation.weaknesses.length > 0 && (
+          {weaknesses.length > 0 && (
             <div className="bg-yellow-50 border border-yellow-100 rounded-lg p-4 flex items-start">
               <AlertCircle className="h-5 w-5 text-yellow-500 mr-3 mt-0.5 flex-shrink-0" />
               <div>
                 <h4 className="font-medium mb-1">Recommendation</h4>
                 <p className="text-sm text-muted-foreground">
-                  {mealAnalysis.evaluation.weaknesses[0]}
+                  {weaknesses[0]}
                 </p>
               </div>
+            </div>
+          )}
+          
+          {macroData.length === 0 && (
+            <div className="text-center py-12 bg-secondary/20 rounded-lg">
+              <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4 opacity-50" />
+              <h3 className="text-lg font-medium mb-2">No Macronutrient Data Available</h3>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                Detailed macronutrient information could not be determined for this meal.
+              </p>
             </div>
           )}
         </TabsContent>
@@ -554,14 +616,14 @@ const Analysis = ({ mealAnalysis }: AnalysisProps) => {
         
         <TabsContent value="insights">
           <div className="space-y-6">
-            {mealAnalysis.evaluation?.strengths && mealAnalysis.evaluation.strengths.length > 0 && (
+            {strengths.length > 0 && (
               <div className="bg-green-50 border border-green-100 rounded-lg p-4">
                 <h3 className="font-semibold text-lg mb-2 flex items-center">
                   <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
                   Strengths
                 </h3>
                 <ul className="space-y-2 pl-5">
-                  {mealAnalysis.evaluation.strengths.map((strength, index) => (
+                  {strengths.map((strength, index) => (
                     <li key={index} className="text-sm text-muted-foreground list-disc">
                       <span className="font-medium text-foreground">{strength}</span>
                     </li>
@@ -570,14 +632,14 @@ const Analysis = ({ mealAnalysis }: AnalysisProps) => {
               </div>
             )}
             
-            {mealAnalysis.evaluation?.weaknesses && mealAnalysis.evaluation.weaknesses.length > 0 && (
+            {weaknesses.length > 0 && (
               <div className="bg-yellow-50 border border-yellow-100 rounded-lg p-4">
                 <h3 className="font-semibold text-lg mb-2 flex items-center">
                   <div className="w-3 h-3 bg-yellow-500 rounded-full mr-2"></div>
                   Improvement Areas
                 </h3>
                 <ul className="space-y-2 pl-5">
-                  {mealAnalysis.evaluation.weaknesses.map((weakness, index) => (
+                  {weaknesses.map((weakness, index) => (
                     <li key={index} className="text-sm text-muted-foreground list-disc">
                       <span className="font-medium text-foreground">{weakness}</span>
                     </li>
@@ -586,14 +648,14 @@ const Analysis = ({ mealAnalysis }: AnalysisProps) => {
               </div>
             )}
             
-            {mealAnalysis.evaluation?.suggestions && mealAnalysis.evaluation.suggestions.length > 0 && (
+            {suggestions.length > 0 && (
               <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
                 <h3 className="font-semibold text-lg mb-2 flex items-center">
                   <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
                   Suggestions for Next Meal
                 </h3>
                 <ul className="space-y-2 pl-5">
-                  {mealAnalysis.evaluation.suggestions.map((suggestion, index) => (
+                  {suggestions.map((suggestion, index) => (
                     <li key={index} className="text-sm text-muted-foreground list-disc">
                       <span className="font-medium text-foreground">{suggestion}</span>
                     </li>
@@ -602,9 +664,7 @@ const Analysis = ({ mealAnalysis }: AnalysisProps) => {
               </div>
             )}
             
-            {(!mealAnalysis.evaluation?.strengths || mealAnalysis.evaluation.strengths.length === 0) && 
-             (!mealAnalysis.evaluation?.weaknesses || mealAnalysis.evaluation.weaknesses.length === 0) && 
-             (!mealAnalysis.evaluation?.suggestions || mealAnalysis.evaluation.suggestions.length === 0) && (
+            {strengths.length === 0 && weaknesses.length === 0 && suggestions.length === 0 && (
               <div className="text-center py-12 bg-secondary/20 rounded-lg">
                 <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4 opacity-50" />
                 <h3 className="text-lg font-medium mb-2">No Detailed Insights Available</h3>
