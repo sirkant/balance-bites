@@ -9,26 +9,74 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      daily_nutrition: {
+        Row: {
+          created_at: string | null
+          date: string
+          id: string
+          total_calories: number | null
+          total_carbs: number | null
+          total_fats: number | null
+          total_fiber: number | null
+          total_proteins: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          date: string
+          id?: string
+          total_calories?: number | null
+          total_carbs?: number | null
+          total_fats?: number | null
+          total_fiber?: number | null
+          total_proteins?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          date?: string
+          id?: string
+          total_calories?: number | null
+          total_carbs?: number | null
+          total_fats?: number | null
+          total_fiber?: number | null
+          total_proteins?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       meals: {
         Row: {
           analysis: Json | null
           created_at: string | null
+          description: string | null
           id: string
           image_url: string
+          meal_name: string | null
+          meal_time: string | null
           user_id: string
         }
         Insert: {
           analysis?: Json | null
           created_at?: string | null
+          description?: string | null
           id?: string
           image_url: string
+          meal_name?: string | null
+          meal_time?: string | null
           user_id: string
         }
         Update: {
           analysis?: Json | null
           created_at?: string | null
+          description?: string | null
           id?: string
           image_url?: string
+          meal_name?: string | null
+          meal_time?: string | null
           user_id?: string
         }
         Relationships: []

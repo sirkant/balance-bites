@@ -120,7 +120,7 @@ serve(async (req: Request) => {
     
     // Handle POST request: Upload and analyze a meal
     if (req.method === 'POST') {
-      const { imageBase64, otherMetadata } = await req.json();
+      const { imageBase64, mealName, description, mealTime, otherMetadata } = await req.json();
       
       if (!imageBase64) {
         return new Response(
@@ -178,7 +178,7 @@ serve(async (req: Request) => {
           .from('meal-images')
           .getPublicUrl(fileName);
         
-        // Call the meal-analysis function to analyze the image using GPT-4o-mini
+        // Call the meal-analysis function to analyze the image
         console.log("Calling meal-analysis function with image URL:", publicUrl);
         const analysisResponse = await fetch(`${supabaseUrl}/functions/v1/meal-analysis`, {
           method: 'POST',
@@ -197,16 +197,23 @@ serve(async (req: Request) => {
         const { analysis } = await analysisResponse.json();
         console.log("Received analysis results:", analysis);
         
-        // Store the meal record in the database
-        const { data: mealData, error: mealError } = await supabaseAdmin
+        // Store the meal record in the database with additional metadata
+        const mealData = {
+          user_id: user.id,
+          image_url: publicUrl,
+          analysis: analysis,
+          meal_name: mealName || null,
+          description: description || null
+        };
+        
+        // Add meal_time if provided
+        if (mealTime) {
+          Object.assign(mealData, { meal_time: mealTime });
+        }
+        
+        const { data: insertedMeal, error: mealError } = await supabaseAdmin
           .from('meals')
-          .insert([
-            {
-              user_id: user.id,
-              image_url: publicUrl,
-              analysis: analysis
-            }
-          ])
+          .insert([mealData])
           .select()
           .single();
         
@@ -215,7 +222,7 @@ serve(async (req: Request) => {
         }
         
         return new Response(
-          JSON.stringify(mealData),
+          JSON.stringify(insertedMeal),
           { status: 201, headers: corsHeaders }
         );
       } catch (error) {

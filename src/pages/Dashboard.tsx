@@ -3,14 +3,18 @@ import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { UploadCloud, LogOut, PieChart, Eye } from 'lucide-react';
+import { UploadCloud, LogOut, PieChart, Eye, Calendar, Plus } from 'lucide-react';
+import DailyNutrition from '@/components/DailyNutrition';
 
 interface Meal {
   id: string;
   image_url: string;
+  meal_name: string | null;
+  description: string | null;
+  meal_time: string | null;
   analysis: {
     calories: number;
     macronutrients: {
@@ -26,8 +30,6 @@ interface Meal {
 const Dashboard = () => {
   const [meals, setMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -50,7 +52,7 @@ const Dashboard = () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.access_token) {
-        // Fix: Use the SUPABASE_URL from the client
+        // Use the SUPABASE_URL from the client
         const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/meals`,
           {
@@ -77,87 +79,6 @@ const Dashboard = () => {
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!selectedFile) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Please select an image to upload',
-      });
-      return;
-    }
-
-    try {
-      setUploading(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session?.access_token) {
-        throw new Error('You need to be logged in');
-      }
-
-      // Convert file to base64
-      const reader = new FileReader();
-      reader.readAsDataURL(selectedFile);
-      
-      reader.onload = async () => {
-        const base64Image = reader.result as string;
-        
-        // Fix: Use the SUPABASE_URL from the client
-        const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/meals`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.access_token}`
-            },
-            body: JSON.stringify({
-              imageBase64: base64Image,
-            }),
-          }
-        );
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to upload meal');
-        }
-
-        const mealData = await response.json();
-
-        toast({
-          title: 'Success!',
-          description: 'Your meal has been uploaded and analyzed.',
-        });
-
-        // Reset file input
-        setSelectedFile(null);
-        const fileInput = document.getElementById('meal-image') as HTMLInputElement;
-        if (fileInput) fileInput.value = '';
-
-        // Navigate to results page with the meal data
-        navigate('/results', { state: { mealData } });
-      };
-
-      reader.onerror = (error) => {
-        throw new Error('Failed to read file');
-      };
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Upload Failed',
-        description: error.message || 'Something went wrong',
-      });
-    } finally {
-      setUploading(false);
     }
   };
 
@@ -192,122 +113,114 @@ const Dashboard = () => {
       </header>
 
       <main className="container py-6">
-        <div className="mb-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Upload New Meal</CardTitle>
-              <CardDescription>
-                Upload a photo of your meal for nutritional analysis
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="grid w-full max-w-sm items-center gap-1.5">
-                  <Input
-                    id="meal-image"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                    disabled={uploading}
-                  />
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button 
-                onClick={handleUpload} 
-                disabled={!selectedFile || uploading}
-                className="w-full"
-              >
-                {uploading ? 'Uploading...' : (
-                  <>
-                    <UploadCloud className="mr-2 h-4 w-4" />
-                    Upload & Analyze
-                  </>
-                )}
-              </Button>
-            </CardFooter>
-          </Card>
+        <div className="mb-6 flex justify-between items-center">
+          <h2 className="text-3xl font-bold">Your Nutrition</h2>
+          <Button asChild>
+            <Link to="/upload">
+              <Plus className="mr-2 h-4 w-4" />
+              Add New Meal
+            </Link>
+          </Button>
         </div>
 
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Your Meal History</h2>
-          
-          {loading ? (
-            <div className="text-center py-8">Loading your meals...</div>
-          ) : meals.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              You haven't uploaded any meals yet. Upload your first meal to see the analysis!
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {meals.map((meal) => (
-                <Card key={meal.id} className="overflow-hidden">
-                  <div className="aspect-video w-full overflow-hidden">
-                    <img 
-                      src={meal.image_url} 
-                      alt="Meal" 
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <CardHeader>
-                    <CardTitle>
-                      {meal.analysis?.foods?.length > 0 
-                        ? meal.analysis.foods.map(food => 
-                            food.charAt(0).toUpperCase() + food.slice(1)
-                          ).join(', ')
-                        : 'Meal Analysis'
-                      }
-                    </CardTitle>
-                    <CardDescription>
-                      {formatDate(meal.created_at)}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span>Calories:</span>
-                        <span className="font-medium">{meal.analysis?.calories || 0} kcal</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Protein:</span>
-                        <span className="font-medium">{meal.analysis?.macronutrients?.protein || 0}g</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Carbs:</span>
-                        <span className="font-medium">{meal.analysis?.macronutrients?.carbs || 0}g</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Fat:</span>
-                        <span className="font-medium">{meal.analysis?.macronutrients?.fat || 0}g</span>
-                      </div>
+        <Tabs defaultValue="summary" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="summary">
+              <Calendar className="h-4 w-4 mr-2" />
+              Daily Summary
+            </TabsTrigger>
+            <TabsTrigger value="meals">
+              <PieChart className="h-4 w-4 mr-2" />
+              My Meals
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="summary" className="space-y-6">
+            <DailyNutrition />
+          </TabsContent>
+
+          <TabsContent value="meals" className="space-y-6">
+            {loading ? (
+              <div className="text-center py-8">Loading your meals...</div>
+            ) : meals.length === 0 ? (
+              <div className="text-center py-12 bg-secondary/30 rounded-lg">
+                <PieChart className="h-16 w-16 mx-auto text-muted-foreground mb-4 opacity-50" />
+                <h3 className="text-lg font-medium mb-2">No meals recorded yet</h3>
+                <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                  Start tracking your nutrition by uploading your first meal photo for analysis.
+                </p>
+                <Button asChild>
+                  <Link to="/upload">
+                    <UploadCloud className="mr-2 h-4 w-4" />
+                    Upload Your First Meal
+                  </Link>
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {meals.map((meal) => (
+                  <Card key={meal.id} className="overflow-hidden">
+                    <div className="aspect-video w-full overflow-hidden">
+                      <img 
+                        src={meal.image_url} 
+                        alt="Meal" 
+                        className="w-full h-full object-cover"
+                      />
                     </div>
-                  </CardContent>
-                  <CardFooter className="flex justify-between">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => viewMealDetails(meal)}
-                    >
-                      <Eye className="mr-2 h-4 w-4" />
-                      View Details
-                    </Button>
-                    <Button 
-                      variant="secondary" 
-                      size="sm"
-                      asChild
-                    >
-                      <Link to="/upload">
-                        <PieChart className="mr-2 h-4 w-4" />
-                        New Analysis
-                      </Link>
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
+                    <CardHeader>
+                      <CardTitle>
+                        {meal.meal_name || (
+                          meal.analysis?.foods?.length > 0 
+                            ? meal.analysis.foods.map(food => 
+                                food.charAt(0).toUpperCase() + food.slice(1)
+                              ).join(', ')
+                            : 'Meal Analysis'
+                        )}
+                      </CardTitle>
+                      <CardDescription>
+                        {meal.meal_time ? formatDate(meal.meal_time) : formatDate(meal.created_at)}
+                        {meal.description && (
+                          <p className="mt-1 text-sm">{meal.description}</p>
+                        )}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span>Calories:</span>
+                          <span className="font-medium">{meal.analysis?.calories || 0} kcal</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Protein:</span>
+                          <span className="font-medium">{meal.analysis?.macronutrients?.protein || 0}g</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Carbs:</span>
+                          <span className="font-medium">{meal.analysis?.macronutrients?.carbs || 0}g</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Fat:</span>
+                          <span className="font-medium">{meal.analysis?.macronutrients?.fat || 0}g</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                    <CardFooter>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => viewMealDetails(meal)}
+                        className="w-full"
+                      >
+                        <Eye className="mr-2 h-4 w-4" />
+                        View Detailed Analysis
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );

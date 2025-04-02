@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import GoogleAdsScript from "@/components/GoogleAdsScript";
 import UploadPage from "./pages/UploadPage";
 import ResultsPage from "./pages/ResultsPage";
+import MealUploadPage from "./pages/MealUploadPage";
 
 // Create a client
 const queryClient = new QueryClient();
@@ -77,6 +78,7 @@ function App() {
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/upload" element={<UploadPage />} />
+            <Route path="/meal-upload" element={<MealUploadPage />} />
             <Route path="/results" element={<ResultsPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
