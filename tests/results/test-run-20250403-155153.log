@@ -1,0 +1,33 @@
+[15:51:53] Starting NutriVision Selenium tests
+[15:51:53] Starting test: ./signup.test.ts
+[15:51:55] [./signup.test.ts] ERROR: /Users/luiscaceres/Desktop/Development/nutrivision/balance-bites/tests/selenium/signup.test.ts:4
+describe('User Signup Flow', () => {
+^
+[15:51:55] [./signup.test.ts] ERROR: ReferenceError: describe is not defined
+    at Object.<anonymous> (/Users/luiscaceres/Desktop/Development/nutrivision/balance-bites/tests/selenium/signup.test.ts:4:1)
+    at Module._compile (node:internal/modules/cjs/loader:1233:14)
+    at Module.m._compile (/Users/luiscaceres/Desktop/Development/nutrivision/balance-bites/tests/selenium/node_modules/ts-node/src/index.ts:1618:23)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1287:10)
+    at Object.require.extensions.<computed> [as .ts] (/Users/luiscaceres/Desktop/Development/nutrivision/balance-bites/tests/selenium/node_modules/ts-node/src/index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1091:32)
+    at Function.Module._load (node:internal/modules/cjs/loader:938:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:83:12)
+    at phase4 (/Users/luiscaceres/Desktop/Development/nutrivision/balance-bites/tests/selenium/node_modules/ts-node/src/bin.ts:649:14)
+    at bootstrap (/Users/luiscaceres/Desktop/Development/nutrivision/balance-bites/tests/selenium/node_modules/ts-node/src/bin.ts:95:10)
+[15:51:55] Test ./signup.test.ts FAILED with exit code 1
+[15:51:55] Starting test: ./meal-upload.test.ts
+[15:51:56] [./meal-upload.test.ts] ERROR: /Users/luiscaceres/Desktop/Development/nutrivision/balance-bites/tests/selenium/meal-upload.test.ts:5
+describe('Meal Upload Flow', () => {
+^
+[15:51:56] [./meal-upload.test.ts] ERROR: ReferenceError: describe is not defined
+    at Object.<anonymous> (/Users/luiscaceres/Desktop/Development/nutrivision/balance-bites/tests/selenium/meal-upload.test.ts:5:1)
+    at Module._compile (node:internal/modules/cjs/loader:1233:14)
+    at Module.m._compile (/Users/luiscaceres/Desktop/Development/nutrivision/balance-bites/tests/selenium/node_modules/ts-node/src/index.ts:1618:23)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1287:10)
+    at Object.require.extensions.<computed> [as .ts] (/Users/luiscaceres/Desktop/Development/nutrivision/balance-bites/tests/selenium/node_modules/ts-node/src/index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1091:32)
+    at Function.Module._load (node:internal/modules/cjs/loader:938:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:83:12)
+    at phase4 (/Users/luiscaceres/Desktop/Development/nutrivision/balance-bites/tests/selenium/node_modules/ts-node/src/bin.ts:649:14)
+    at bootstrap (/Users/luiscaceres/Desktop/Development/nutrivision/balance-bites/tests/selenium/node_modules/ts-node/src/bin.ts:95:10)
+[15:51:56] Test ./meal-upload.test.ts FAILED with exit code 1
