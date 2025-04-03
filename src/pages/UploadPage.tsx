@@ -1,13 +1,13 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Upload, Camera, Trash2, Info, ArrowRight, LogIn } from 'lucide-react';
+import { Upload, Camera, Trash2, Info, ArrowRight, LogIn, AlertTriangle } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import LoadingAnimation from '@/components/LoadingAnimation';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const UploadPage = () => {
   const [dragActive, setDragActive] = useState(false);
@@ -62,16 +62,119 @@ const UploadPage = () => {
     }
   };
 
-  const handleFile = (file: File) => {
-    if (!file.type.match('image.*')) {
+  const handleFile = async (file: File) => {
+    // Check if file is HEIC/HEIF format (common for iPhone photos)
+    const isHeicFormat = file.name.toLowerCase().endsWith('.heic') || 
+                         file.name.toLowerCase().endsWith('.heif') || 
+                         file.type === 'image/heic' || 
+                         file.type === 'image/heif';
+    
+    if (isHeicFormat) {
+      try {
+        // Let the user know we're trying to handle their iPhone photo
+        toast({
+          title: "iPhone Photo Detected",
+          description: "HEIC format detected. Attempting to process...",
+          variant: "default"
+        });
+        
+        try {
+          // Try to load the conversion library
+          const heic2any = await import('heic2any');
+          
+          // Attempt conversion with higher quality and timeout
+          const jpegBlob = await Promise.race([
+            heic2any.default({
+              blob: file,
+              toType: 'image/jpeg',
+              quality: 0.9  // Higher quality
+            }),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error("Conversion timed out")), 10000)
+            )
+          ]) as Blob | Blob[];
+          
+          // Process the converted blob
+          let fileBlob: Blob;
+          if (Array.isArray(jpegBlob)) {
+            fileBlob = jpegBlob[0];
+          } else {
+            fileBlob = jpegBlob;
+          }
+          
+          const jpegFile = new File(
+            [fileBlob], 
+            file.name.replace(/\.(heic|heif)$/i, '.jpg'), 
+            { type: 'image/jpeg' }
+          );
+          
+          // Success message
+          toast({
+            title: "Conversion Successful",
+            description: "Your iPhone photo was successfully converted.",
+            variant: "default"
+          });
+          
+          // Process the converted file
+          processImageFile(jpegFile);
+          
+        } catch (error: any) {
+          console.error("HEIC conversion error:", error);
+          
+          // Directly process the file if it's small enough - might work
+          if (file.size < 1024 * 1024 * 2) { // Less than 2MB
+            try {
+              console.log("Attempting direct processing of HEIC file");
+              processImageFile(file);
+              return;
+            } catch (directProcessError) {
+              console.error("Direct HEIC processing failed:", directProcessError);
+            }
+          }
+          
+          // Show detailed error with instructions
+          let errorMsg = "Please convert your iPhone photo using the instructions below.";
+          
+          if (error.message && (
+              error.message.includes("ERR_LIBHEIF") || 
+              error.message.includes("format not supported") ||
+              error.message.includes("Conversion timed out")
+          )) {
+            errorMsg = "Your iPhone photo format cannot be automatically converted in this browser.";
+          }
+          
+          toast({
+            title: "iPhone Photo Needs Conversion",
+            description: errorMsg,
+            variant: "destructive"
+          });
+          
+          // Show specific conversion instructions
+          showHeicInstructions();
+        }
+        return;
+      } catch (error) {
+        console.error("HEIC handling error:", error);
+        toast({
+          title: "Photo Format Issue",
+          description: "Please convert your iPhone photo to JPEG format before uploading.",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+    
+    // For non-HEIC images, check if it's a supported format
+    if (!file.type.match('image/jpeg') && !file.type.match('image/png') && !file.type.match('image/jpg')) {
       toast({
-        title: "Invalid file type",
-        description: "Please upload an image file (JPEG, PNG, etc.)",
+        title: "Unsupported file type",
+        description: "Please upload a JPEG or PNG image file. Other formats may not work with our analysis system.",
         variant: "destructive"
       });
       return;
     }
     
+    // Check file size
     if (file.size > 10 * 1024 * 1024) {
       toast({
         title: "File too large",
@@ -81,6 +184,12 @@ const UploadPage = () => {
       return;
     }
     
+    // Process valid image files
+    processImageFile(file);
+  };
+  
+  // Helper function to process valid image files
+  const processImageFile = (file: File) => {
     setFileName(file.name);
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -153,6 +262,8 @@ const UploadPage = () => {
           },
           body: JSON.stringify({
             imageBase64: preview,
+            mealName: "Test Meal",
+            description: "Testing edge function"
           }),
         }
       );
@@ -193,6 +304,15 @@ const UploadPage = () => {
       });
       setIsUploading(false);
     }
+  };
+
+  // Function to show detailed HEIC conversion instructions
+  const showHeicInstructions = () => {
+    toast({
+      title: "How to Convert iPhone Photos",
+      description: "iPhone HEIC photos need conversion: Open Photos app → Tap Share → Tap Options at top → Select Most Compatible → Share the image.",
+      variant: "default"
+    });
   };
 
   if (loading) {
@@ -325,6 +445,25 @@ const UploadPage = () => {
                   </ul>
                 </div>
               </div>
+
+              {!preview && isAuthenticated && (
+                <Alert className="mb-4">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Important Information About iPhone Photos</AlertTitle>
+                  <AlertDescription>
+                    <p className="mb-2">Our system works best with <strong>JPEG</strong> and <strong>PNG</strong> images.</p>
+                    <p className="mb-2"><strong>iPhone users:</strong> If your photo fails to upload, follow these steps:</p>
+                    <ol className="list-decimal ml-5 space-y-1">
+                      <li>Open the photo in your Photos app</li>
+                      <li>Tap the Share button (square with arrow)</li>
+                      <li>Tap <strong>Options</strong> at the top of the screen</li>
+                      <li>In <strong>Format</strong>, select <strong>Most Compatible</strong></li>
+                      <li>Share the image (to yourself via message/email or save directly)</li>
+                      <li>Upload the converted JPEG image</li>
+                    </ol>
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
           </div>
         </div>

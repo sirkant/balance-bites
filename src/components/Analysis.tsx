@@ -20,6 +20,7 @@ import {
   Legend
 } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import PremiumNutriScore from './PremiumNutriScore';
 
 interface MacronutrientData {
   protein: number;
@@ -55,8 +56,11 @@ interface MineralData {
 }
 
 interface MicronutrientData {
-  vitamins: VitaminData;
-  minerals: MineralData;
+  vitamins: VitaminData | string[];
+  minerals: MineralData | string[];
+  fiber?: number;
+  sugar?: number;
+  sodium?: number;
 }
 
 interface DietaryInfo {
@@ -76,7 +80,7 @@ interface Evaluation {
 
 interface MealAnalysisData {
   foods: string[];
-  calories: number;
+  calories: number | string;
   macronutrients?: MacronutrientData;
   macros?: {
     proteins?: string | number;
@@ -95,10 +99,43 @@ interface MealAnalysisData {
   improvementSuggestions?: string[];
   nutritionalAnalysis?: string;
   confidence: 'high' | 'medium' | 'low';
+  foodDetails?: Record<string, { category?: string; description?: string; nutritionalValue?: string }>;
+  foodGroupsEvaluation?: {
+    count: number;
+    missing: string[];
+    explanation: string;
+  };
+  // Premium features
+  overallNutriScore?: string; // A-E grade
+  nutrientBreakdown?: {
+    sugar?: {
+      amount: number;
+      unit: string;
+      level: string;
+    };
+    salt?: {
+      amount: number;
+      unit: string;
+      level: string;
+    };
+    fiber?: {
+      amount: number;
+      unit: string;
+      level: string;
+    };
+    proteinQuality?: string;
+    saturatedFat?: {
+      amount: number;
+      unit: string;
+      level: string;
+    };
+  };
+  personalizedRecommendations?: string[];
 }
 
 interface AnalysisProps {
   mealAnalysis: MealAnalysisData;
+  isPremium?: boolean;
 }
 
 const NutrientMetric = ({ 
@@ -170,7 +207,7 @@ const parseMacroValue = (value: string | number | undefined): number => {
   return isNaN(numericPart) ? 0 : numericPart;
 };
 
-const Analysis = ({ mealAnalysis }: AnalysisProps) => {
+const Analysis = ({ mealAnalysis, isPremium = false }: AnalysisProps) => {
   const [expandedSections, setExpandedSections] = useState({
     vitamins: false,
     minerals: false
@@ -215,20 +252,36 @@ const Analysis = ({ mealAnalysis }: AnalysisProps) => {
   }
   
   const vitaminsData = mealAnalysis.micronutrients?.vitamins ? 
-    Object.entries(mealAnalysis.micronutrients.vitamins).map(([key, value]) => ({
-      name: formatNutrientName(key),
-      value: value || 0,
-      goal: 100,
-      unit: '%'
-    })) : [];
+    Array.isArray(mealAnalysis.micronutrients.vitamins) 
+      ? mealAnalysis.micronutrients.vitamins.map(vitamin => ({
+          name: vitamin,
+          value: 100, // Since we don't have specific values for the array format, we'll assume 100%
+          goal: 100,
+          unit: '%'
+        }))
+      : Object.entries(mealAnalysis.micronutrients.vitamins).map(([key, value]) => ({
+          name: formatNutrientName(key),
+          value: value || 0,
+          goal: 100,
+          unit: '%'
+        }))
+    : [];
   
   const mineralsData = mealAnalysis.micronutrients?.minerals ? 
-    Object.entries(mealAnalysis.micronutrients.minerals).map(([key, value]) => ({
-      name: formatNutrientName(key),
-      value: value || 0,
-      goal: 100,
-      unit: '%'
-    })) : [];
+    Array.isArray(mealAnalysis.micronutrients.minerals)
+      ? mealAnalysis.micronutrients.minerals.map(mineral => ({
+          name: mineral,
+          value: 100, // Since we don't have specific values for the array format, we'll assume 100%
+          goal: 100,
+          unit: '%'
+        }))
+      : Object.entries(mealAnalysis.micronutrients.minerals).map(([key, value]) => ({
+          name: formatNutrientName(key),
+          value: value || 0,
+          goal: 100,
+          unit: '%'
+        }))
+    : [];
   
   const toggleSection = (section: 'vitamins' | 'minerals') => {
     setExpandedSections(prev => ({
@@ -259,7 +312,9 @@ const Analysis = ({ mealAnalysis }: AnalysisProps) => {
       const proteinCal = protein * 4;
       const carbsCal = carbs * 4;
       const fatCal = fat * 9;
-      const totalCal = mealAnalysis.calories;
+      const totalCal = typeof mealAnalysis.calories === 'number' 
+        ? mealAnalysis.calories 
+        : parseFloat(mealAnalysis.calories) || 0;
       
       const proteinRatio = proteinCal / totalCal;
       const carbsRatio = carbsCal / totalCal;
@@ -279,9 +334,17 @@ const Analysis = ({ mealAnalysis }: AnalysisProps) => {
   
   const nutritionGrade = getNutritionGrade();
   
-  const caloriesValue = typeof mealAnalysis.calories === 'string' 
-    ? parseInt(mealAnalysis.calories.replace(/[^0-9]/g, '')) 
-    : mealAnalysis.calories;
+  let caloriesValue = 0;
+  if (mealAnalysis.calories !== undefined) {
+    if (typeof mealAnalysis.calories === 'number') {
+      caloriesValue = mealAnalysis.calories;
+    } else if (typeof mealAnalysis.calories === 'string') {
+      const match = mealAnalysis.calories.match(/\d+/);
+      if (match) {
+        caloriesValue = parseInt(match[0], 10);
+      }
+    }
+  }
   
   return (
     <div className="bg-white rounded-lg shadow-sm border p-6 animate-scale-in">
@@ -327,11 +390,35 @@ const Analysis = ({ mealAnalysis }: AnalysisProps) => {
         </div>
       )}
       
+      {/* Premium NutriScore Display */}
+      {isPremium && mealAnalysis.overallNutriScore && (
+        <div className="mb-8">
+          <PremiumNutriScore 
+            overallNutriScore={mealAnalysis.overallNutriScore}
+            nutrientBreakdown={mealAnalysis.nutrientBreakdown}
+            micronutrients={{
+              vitamins: Array.isArray(mealAnalysis.micronutrients?.vitamins) 
+                ? mealAnalysis.micronutrients.vitamins
+                : mealAnalysis.micronutrients?.vitamins 
+                  ? Object.keys(mealAnalysis.micronutrients.vitamins).map(k => formatNutrientName(k)) 
+                  : [],
+              minerals: Array.isArray(mealAnalysis.micronutrients?.minerals)
+                ? mealAnalysis.micronutrients.minerals
+                : mealAnalysis.micronutrients?.minerals
+                  ? Object.keys(mealAnalysis.micronutrients.minerals).map(k => formatNutrientName(k))
+                  : []
+            }}
+            personalizedRecommendations={mealAnalysis.personalizedRecommendations}
+          />
+        </div>
+      )}
+      
       <Tabs defaultValue="overview" className="mb-8">
         <TabsList className="mb-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="macros">Macronutrients</TabsTrigger>
           <TabsTrigger value="vitamins">Vitamins & Minerals</TabsTrigger>
+          <TabsTrigger value="foods">Food Details</TabsTrigger>
           <TabsTrigger value="insights">Insights</TabsTrigger>
         </TabsList>
         
@@ -359,10 +446,10 @@ const Analysis = ({ mealAnalysis }: AnalysisProps) => {
             
             <div className="bg-white rounded-lg border p-4 shadow-sm text-center">
               <h3 className="text-lg font-medium mb-1">Food Groups</h3>
-              <div className="text-3xl font-bold mb-2">{mealAnalysis.foods.length}/5</div>
+              <div className="text-3xl font-bold mb-2">{mealAnalysis.foods?.length || 0}/5</div>
               <p className="text-sm text-muted-foreground">
-                {mealAnalysis.foods.length >= 4 ? 'Good diversity' : 
-                 mealAnalysis.foods.length >= 2 ? 'Average diversity' : 'Limited diversity'}
+                {mealAnalysis.foods?.length >= 4 ? 'Good diversity' : 
+                 mealAnalysis.foods?.length >= 2 ? 'Average diversity' : 'Limited diversity'}
               </p>
             </div>
           </div>
@@ -403,13 +490,29 @@ const Analysis = ({ mealAnalysis }: AnalysisProps) => {
                 Detected Food Items
               </h3>
               <ul className="space-y-2">
-                {mealAnalysis.foods.map((food, index) => (
-                  <li key={index} className="flex items-center bg-secondary/50 p-2 rounded">
-                    <div className={`w-2 h-2 ${
-                      ['bg-green-500', 'bg-blue-500', 'bg-purple-500', 'bg-yellow-500', 'bg-red-500']
-                      [index % 5]
-                    } rounded-full mr-2`}></div>
-                    <span>{food}</span>
+                {mealAnalysis.foods && mealAnalysis.foods.map((food, index) => (
+                  <li key={index} className="flex flex-col bg-secondary/50 p-3 rounded">
+                    <div className="flex items-center">
+                      <div className={`w-2 h-2 ${
+                        ['bg-green-500', 'bg-blue-500', 'bg-purple-500', 'bg-yellow-500', 'bg-red-500']
+                        [index % 5]
+                      } rounded-full mr-2`}></div>
+                      <span className="font-medium">{food}</span>
+                      {mealAnalysis.foodDetails?.[food] && (
+                        <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
+                          {mealAnalysis.foodDetails[food].category || 'Uncategorized'}
+                        </span>
+                      )}
+                    </div>
+                    {mealAnalysis.foodDetails?.[food] && (
+                      <div className="mt-1 pl-4">
+                        <p className="text-xs text-muted-foreground">
+                          {mealAnalysis.foodDetails[food].description || 
+                            mealAnalysis.foodDetails[food].nutritionalValue || 
+                            `No detailed information available for ${food}.`}
+                        </p>
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -424,7 +527,7 @@ const Analysis = ({ mealAnalysis }: AnalysisProps) => {
                 <ul className="space-y-2">
                   {Object.entries(mealAnalysis.dietaryInfo).map(([key, value]) => (
                     <li key={key} className="flex items-center justify-between bg-secondary/50 p-2 rounded">
-                      <span>{formatNutrientName(key.replace('is', ''))}</span>
+                      <span>{formatNutrientName(typeof key === 'string' ? key.replace('is', '') : key)}</span>
                       <Badge variant="secondary">{value ? 'Yes' : 'No'}</Badge>
                     </li>
                   ))}
@@ -612,6 +715,60 @@ const Analysis = ({ mealAnalysis }: AnalysisProps) => {
               </p>
             </div>
           )}
+        </TabsContent>
+        
+        <TabsContent value="foods">
+          <div className="space-y-6">
+            <div className="bg-secondary/10 p-4 rounded-lg mb-6">
+              <h3 className="text-lg font-semibold mb-2">Food Items Analysis</h3>
+              <p className="text-sm text-muted-foreground">
+                Detailed analysis of each food item in your meal, including nutritional value and food group categorization.
+              </p>
+              {mealAnalysis.foodGroupsEvaluation?.explanation && (
+                <div className="mt-3 p-3 bg-blue-50 rounded-md text-sm">
+                  <p className="font-medium text-blue-800 mb-1">Food Group Balance:</p>
+                  <p className="text-blue-700">{mealAnalysis.foodGroupsEvaluation.explanation}</p>
+                  
+                  {mealAnalysis.foodGroupsEvaluation.missing && mealAnalysis.foodGroupsEvaluation.missing.length > 0 && (
+                    <div className="mt-2">
+                      <p className="font-medium text-blue-800 mb-1">Missing Food Groups:</p>
+                      <ul className="list-disc pl-5 text-blue-700">
+                        {mealAnalysis.foodGroupsEvaluation.missing.map((group, index) => (
+                          <li key={index}>{group}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            {mealAnalysis.foods && mealAnalysis.foods.map((food, index) => (
+              <div key={index} className="flex flex-col bg-secondary/50 p-3 rounded">
+                <div className="flex items-center">
+                  <div className={`w-2 h-2 ${
+                    ['bg-green-500', 'bg-blue-500', 'bg-purple-500', 'bg-yellow-500', 'bg-red-500']
+                    [index % 5]
+                  } rounded-full mr-2`}></div>
+                  <span className="font-medium">{food}</span>
+                  {mealAnalysis.foodDetails?.[food] && (
+                    <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
+                      {mealAnalysis.foodDetails[food].category || 'Uncategorized'}
+                    </span>
+                  )}
+                </div>
+                {mealAnalysis.foodDetails?.[food] && (
+                  <div className="mt-1 pl-4">
+                    <p className="text-xs text-muted-foreground">
+                      {mealAnalysis.foodDetails[food].description || 
+                        mealAnalysis.foodDetails[food].nutritionalValue || 
+                        `No detailed information available for ${food}.`}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </TabsContent>
         
         <TabsContent value="insights">
