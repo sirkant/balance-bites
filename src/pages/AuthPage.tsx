@@ -12,15 +12,25 @@ const AuthPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   // Check if user is already logged in
   useEffect(() => {
     const checkSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        navigate('/dashboard');
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error("Session error:", error);
+          return;
+        }
+        
+        if (data.session) {
+          navigate('/dashboard');
+        }
+      } catch (err) {
+        console.error("Failed to check session:", err);
       }
     };
     
@@ -30,20 +40,28 @@ const AuthPage = () => {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setAuthError(null);
     
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`
+        }
       });
       
       if (error) throw error;
       
-      toast({
-        title: 'Success!',
-        description: 'Check your email for the confirmation link.',
-      });
+      if (data?.user) {
+        toast({
+          title: 'Success!',
+          description: 'Check your email for the confirmation link.',
+        });
+      }
     } catch (error: any) {
+      console.error("Sign up error:", error);
+      setAuthError(error.message || 'An error occurred during sign up.');
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -57,22 +75,30 @@ const AuthPage = () => {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setAuthError(null);
     
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      console.log("Attempting to sign in with:", { email });
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
       if (error) throw error;
       
-      toast({
-        title: 'Welcome back!',
-        description: 'You have successfully signed in.',
-      });
-      
-      navigate('/dashboard');
+      if (data?.session) {
+        toast({
+          title: 'Welcome back!',
+          description: 'You have successfully signed in.',
+        });
+        
+        navigate('/dashboard');
+      } else {
+        throw new Error('Authentication failed. No session returned.');
+      }
     } catch (error: any) {
+      console.error("Sign in error:", error);
+      setAuthError(error.message || 'Invalid login credentials.');
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -123,6 +149,9 @@ const AuthPage = () => {
                       required
                     />
                   </div>
+                  {authError && (
+                    <div className="text-destructive text-sm">{authError}</div>
+                  )}
                 </CardContent>
                 <CardFooter>
                   <Button type="submit" className="w-full" disabled={loading}>
@@ -164,6 +193,9 @@ const AuthPage = () => {
                       required
                     />
                   </div>
+                  {authError && (
+                    <div className="text-destructive text-sm">{authError}</div>
+                  )}
                 </CardContent>
                 <CardFooter>
                   <Button type="submit" className="w-full" disabled={loading}>
