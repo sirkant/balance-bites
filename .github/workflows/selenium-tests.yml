@@ -1,0 +1,76 @@
+name: NutriVision Selenium Tests
+
+on:
+  schedule:
+    - cron: '0 1 * * *'  # Run daily at 1 AM UTC
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        
+    - name: Install Chrome
+      run: |
+        wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
+        echo "deb http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list
+        apt-get update
+        apt-get install -y google-chrome-stable
+        
+    - name: Install ChromeDriver
+      run: |
+        CHROME_VERSION=$(google-chrome --version | cut -d ' ' -f 3 | cut -d '.' -f 1)
+        CHROMEDRIVER_VERSION=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION")
+        wget -q "https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip"
+        unzip chromedriver_linux64.zip
+        chmod +x chromedriver
+        sudo mv chromedriver /usr/local/bin/
+        
+    - name: Install dependencies
+      run: |
+        cd tests/selenium
+        npm install
+        
+    - name: Create test fixtures
+      run: |
+        mkdir -p tests/fixtures
+        # Download a sample meal image for testing
+        curl -o tests/fixtures/test-meal.jpg https://raw.githubusercontent.com/your-repo/test-images/main/sample-meal.jpg
+        
+    - name: Run Selenium tests
+      env:
+        TEST_BASE_URL: ${{ secrets.TEST_BASE_URL }}
+        NOTIFY_ON_FAILURE: "true"
+        NOTIFICATION_EMAIL: ${{ secrets.NOTIFICATION_EMAIL }}
+        HEADLESS: "true"
+      run: |
+        cd tests/selenium
+        npm test
+        
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results
+        path: |
+          tests/selenium/../results/
+          tests/selenium/../screenshots/
+          tests/selenium/../logs/
+        retention-days: 7
+        
+    - name: Send notification on failure
+      if: failure()
+      run: |
+        # Here you would implement your notification logic
+        # For example, sending an email or creating a GitHub issue
+        echo "Tests failed! Check the artifacts for details." 
