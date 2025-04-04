@@ -1,51 +1,75 @@
 import { z } from 'zod';
 
-const envSchema = z.object({
-  // Supabase Configuration
-  SUPABASE_URL: z.string().url().optional().default('https://ozyzkeddhldosnxwrnok.supabase.co'),
-  SUPABASE_ANON_KEY: z.string().optional().default('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96eXprZWRkaGxkb3NueHdybm9rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA5OTQxMTIsImV4cCI6MjA1NjU3MDExMn0.UnLM7Ggbw_6PUxh_wfqfNd3WhugT1ljMnwUzP8vHGb4'),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().optional().default(''),
-
-  // Stripe Configuration
-  STRIPE_SECRET_KEY: z.string().optional().default(''),
-  STRIPE_PUBLISHABLE_KEY: z.string().optional().default(''),
-  STRIPE_WEBHOOK_SECRET: z.string().optional().default(''),
-
-  // OpenAI Configuration
-  OPENAI_API_KEY: z.string().optional().default('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'),
-
+/**
+ * Frontend-safe environment variables schema
+ * IMPORTANT: Only add variables here that are safe to expose to the browser
+ */
+const clientEnvSchema = z.object({
+  // Supabase Configuration (public keys only)
+  SUPABASE_URL: z.string().url().min(1, "Supabase URL is required"),
+  SUPABASE_ANON_KEY: z.string().min(1, "Supabase anon key is required"),
+  
+  // Stripe Configuration (public keys only)
+  STRIPE_PUBLISHABLE_KEY: z.string().optional(),
+  
   // Application Configuration
-  NEXT_PUBLIC_APP_URL: z.string().optional().default('http://localhost:3000'),
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  APP_URL: z.string().url().min(1, "App URL is required"),
+  
+  // Environment
+  NODE_ENV: z.enum(['development', 'production', 'test']),
 });
 
-// Validate environment variables
-const parseEnvVars = () => {
-  try {
-    return envSchema.parse({
-      SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
-      SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY,
-      SUPABASE_SERVICE_ROLE_KEY: import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY,
-      STRIPE_SECRET_KEY: import.meta.env.VITE_STRIPE_SECRET_KEY,
-      STRIPE_PUBLISHABLE_KEY: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY,
-      STRIPE_WEBHOOK_SECRET: import.meta.env.VITE_STRIPE_WEBHOOK_SECRET,
-      OPENAI_API_KEY: import.meta.env.VITE_OPENAI_API_KEY,
-      NEXT_PUBLIC_APP_URL: import.meta.env.VITE_NEXT_PUBLIC_APP_URL,
-      NODE_ENV: import.meta.env.MODE || 'development',
-    });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      const missingVars = error.errors.map((err) => err.path.join('.')).join(', ');
-      console.warn(`Warning: Some environment variables are missing or invalid: ${missingVars}`);
-      // Return defaults instead of throwing
-      return envSchema.parse({});
-    }
-    console.error('Error parsing environment variables:', error);
-    return envSchema.parse({});
+/**
+ * Parse and validate client environment variables from import.meta.env
+ * Only use variables with the VITE_ prefix
+ */
+const parseClientEnv = () => {
+  // Log what environment we're using in development mode
+  if (import.meta.env.MODE === 'development') {
+    console.log(`Environment: ${import.meta.env.MODE}`);
   }
+  
+  const parsed = clientEnvSchema.safeParse({
+    SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
+    SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY,
+    STRIPE_PUBLISHABLE_KEY: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY,
+    APP_URL: import.meta.env.VITE_APP_URL,
+    NODE_ENV: import.meta.env.MODE || 'development',
+  });
+
+  if (!parsed.success) {
+    const missingVars = parsed.error.errors.map((err) => `${err.path.join('.')}: ${err.message}`).join(', ');
+    console.error(`[env.ts] Environment variable validation failed: ${missingVars}`);
+    throw new Error(`Missing or invalid environment variables: ${missingVars}`);
+  }
+
+  return parsed.data;
 };
 
-export const env = parseEnvVars();
+/**
+ * IMPORTANT: These are the ONLY environment variables that should be used in the frontend
+ * Do NOT access import.meta.env directly from other files
+ */
+export const env = parseClientEnv();
 
-// Export a type for the environment variables
-export type Env = z.infer<typeof envSchema>; 
+/**
+ * Type definition for frontend environment variables
+ */
+export type ClientEnv = z.infer<typeof clientEnvSchema>;
+
+/**
+ * Initialize environment with default values
+ * (for tests, storybook, etc.)
+ * @param overrides - Override default values
+ */
+export const initTestEnv = (overrides: Partial<ClientEnv> = {}) => {
+  const testEnv = {
+    SUPABASE_URL: 'https://example.supabase.co',
+    SUPABASE_ANON_KEY: 'test-anon-key',
+    APP_URL: 'http://localhost:8080',
+    NODE_ENV: 'test',
+    ...overrides,
+  };
+  
+  return clientEnvSchema.parse(testEnv);
+};

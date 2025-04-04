@@ -22,6 +22,7 @@ import { Textarea } from '@/components/ui/textarea';
 import LoadingAnimation from '@/components/LoadingAnimation';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { env } from '@/config/env';
 
 const mealFormSchema = z.object({
   mealName: z.string().min(1, { message: 'Meal name is required' }),
@@ -220,8 +221,8 @@ const MealUploadForm = () => {
         setUploadProgress(prev => Math.min(prev + 10, 90));
       }, 500);
       
-      // Use environment variable or fallback for Supabase URL
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://ozyzkeddhldosnxwrnok.supabase.co";
+      // Use the validated environment variables from env
+      const supabaseUrl = env.SUPABASE_URL;
       
       const response = await fetch(
         `${supabaseUrl}/functions/v1/meals`,

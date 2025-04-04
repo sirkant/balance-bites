@@ -12,6 +12,7 @@
 
 # production
 /build
+/dist
 
 # misc
 .DS_Store
@@ -24,7 +25,12 @@ yarn-error.log*
 
 # local env files
 .env
-.env*.local
+.env.local
+.env.*.local
+.env.development
+.env.test
+.env.production
+.env.*
 
 # vercel
 .vercel
@@ -36,3 +42,19 @@ next-env.d.ts
 # IDE
 .vscode/
 .idea/
+
+# Supabase
+.supabase/
+supabase/.output/
+
+# Debug JSON or dumps
+*.log
+*.dump.json
+
+# Optional: Uploaded test files
+/public/uploads/
+*.png
+*.jpg
+
+# Local Netlify folder
+.netlify

@@ -1,15 +1,13 @@
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
+import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
+import { toast } from '@/components/ui/use-toast';
 import Header from '@/components/Header';
-import Footer from '@/components/Footer';
-import { useToast } from '@/components/ui/use-toast';
-import { analyzeMeal } from '@/services/ai';
-import OpenAI from 'openai';
+import { supabase } from '@/integrations/supabase/client';
 import { env } from '@/config/env';
 
+// TestPage for meal analysis functionality
 const TestPage = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -17,65 +15,58 @@ const TestPage = () => {
   const [analysis, setAnalysis] = useState<any>(null);
   const [rawResponse, setRawResponse] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { toast } = useToast();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  
+  // Check authentication on load
+  React.useEffect(() => {
+    const checkAuth = async () => {
+      const { data } = await supabase.auth.getSession();
+      setIsAuthenticated(!!data.session);
+      
+      if (!data.session) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to use the test features",
+          variant: "destructive"
+        });
+      }
+    };
+    
+    checkAuth();
+  }, []);
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (e.target?.result) {
-          setPreview(e.target.result as string);
-        }
-      };
-      reader.readAsDataURL(file);
+    if (!event.target.files || event.target.files.length === 0) {
+      setSelectedFile(null);
+      setPreview(null);
+      return;
     }
+
+    const file = event.target.files[0];
+    setSelectedFile(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleAnalyze = async () => {
     if (!preview) {
       toast({
-        title: "Image required",
-        description: "Please upload an image to analyze",
+        title: "No image selected",
+        description: "Please select an image to analyze",
         variant: "destructive"
       });
       return;
     }
-
-    setIsAnalyzing(true);
-    setError(null);
-    setRawResponse(null);
     
-    try {
-      // Use the local analyzeMeal function directly
-      const result = await analyzeMeal(preview, false);
-      setAnalysis(result);
-      
+    if (!isAuthenticated) {
       toast({
-        title: "Analysis Complete",
-        description: "Your meal has been successfully analyzed",
-      });
-    } catch (err) {
-      console.error('Analysis error:', err);
-      setError('Failed to analyze meal. Please try again.');
-      toast({
-        title: "Analysis Failed",
-        description: "There was an error analyzing your meal",
-        variant: "destructive"
-      });
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
-  // Direct call to OpenAI for testing
-  const handleDirectOpenAICall = async () => {
-    if (!preview) {
-      toast({
-        title: "Image required",
-        description: "Please upload an image to analyze",
+        title: "Authentication required",
+        description: "Please sign in to use this feature",
         variant: "destructive"
       });
       return;
@@ -87,83 +78,55 @@ const TestPage = () => {
     setAnalysis(null);
     
     try {
-      // Initialize OpenAI client directly
-      const openai = new OpenAI({
-        apiKey: env.OPENAI_API_KEY,
-        dangerouslyAllowBrowser: true
-      });
-
-      const FREE_PROMPT = `Analyze this meal image and provide basic nutritional information. Include:
-1. Estimated calories
-2. Basic macronutrients (protein, carbs, fat)
-3. List of main ingredients
-4. A simple health score (1-10)
-5. 2-3 basic recommendations for improvement
-
-Format the response as JSON with the following structure:
-{
-  "calories": number,
-  "macronutrients": {
-    "protein": number,
-    "carbs": number,
-    "fat": number
-  },
-  "ingredients": string[],
-  "healthScore": number,
-  "recommendations": string[]
-}`;
-
-      console.log('Making direct OpenAI API call...');
-      const response = await openai.chat.completions.create({
-        model: 'gpt-4-vision-preview',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: FREE_PROMPT,
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: preview,
-                },
-              },
-            ],
-          },
-        ],
-        max_tokens: 1000,
-        temperature: 0.7,
-      });
+      // Get the authentication session
+      const { data: { session } } = await supabase.auth.getSession();
       
-      // Store the raw response for inspection
-      const content = response.choices[0].message.content || '{}';
-      setRawResponse(content);
-      
-      // Try to parse it as JSON
-      try {
-        const parsedAnalysis = JSON.parse(content);
-        setAnalysis(parsedAnalysis);
-        toast({
-          title: "Direct OpenAI Call Successful",
-          description: "Response received and parsed successfully",
-        });
-      } catch (parseError) {
-        console.error('Failed to parse JSON response:', parseError);
-        setError('Response was not valid JSON. See raw response below.');
-        toast({
-          title: "JSON Parsing Failed",
-          description: "The response was not valid JSON",
-          variant: "destructive"
-        });
+      if (!session?.access_token) {
+        throw new Error('Authentication required');
       }
-    } catch (err) {
-      console.error('Direct OpenAI error:', err);
-      setError('Failed to call OpenAI API directly. See console for details.');
+      
+      // Call the secure Edge Function endpoint
+      const response = await fetch(
+        `${env.SUPABASE_URL}/functions/v1/meal-analysis`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            imageBase64: preview,
+            mealName: 'Test Meal',
+            description: 'Meal from test page',
+            isPremium: false
+          }),
+        }
+      );
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to analyze meal');
+      }
+      
+      const data = await response.json();
+      setRawResponse(JSON.stringify(data, null, 2));
+      
+      // Set the analysis data
+      if (data.analysis) {
+        setAnalysis(data.analysis);
+        toast({
+          title: "Analysis Successful",
+          description: "Meal analyzed successfully"
+        });
+      } else {
+        throw new Error('No analysis data returned');
+      }
+    } catch (err: any) {
+      console.error('Analysis error:', err);
+      setError(err.message || 'Failed to analyze meal');
       toast({
-        title: "Direct OpenAI Call Failed",
-        description: "Failed to connect to OpenAI API",
+        title: "Analysis Failed",
+        description: err.message || "An error occurred during analysis",
         variant: "destructive"
       });
     } finally {
@@ -214,24 +177,13 @@ Format the response as JSON with the following structure:
                     </div>
                   )}
                   
-                  <div className="flex space-x-4">
-                    <Button
-                      onClick={handleAnalyze}
-                      disabled={!selectedFile || isAnalyzing}
-                      className="flex-1"
-                    >
-                      {isAnalyzing ? 'Analyzing...' : 'Analyze Using Service'}
-                    </Button>
-                    
-                    <Button
-                      onClick={handleDirectOpenAICall}
-                      disabled={!selectedFile || isAnalyzing}
-                      className="flex-1"
-                      variant="secondary"
-                    >
-                      {isAnalyzing ? 'Analyzing...' : 'Direct OpenAI Call'}
-                    </Button>
-                  </div>
+                  <Button
+                    onClick={handleAnalyze}
+                    disabled={!selectedFile || isAnalyzing || !isAuthenticated}
+                    className="w-full"
+                  >
+                    {isAnalyzing ? 'Analyzing...' : 'Analyze Using Secure API'}
+                  </Button>
                 </div>
               </Card>
             ) : (
@@ -244,7 +196,7 @@ Format the response as JSON with the following structure:
                 
                 {rawResponse && (
                   <Card className="p-4">
-                    <h2 className="text-lg font-semibold mb-2">Raw OpenAI Response</h2>
+                    <h2 className="text-lg font-semibold mb-2">Raw API Response</h2>
                     <div className="bg-gray-100 p-4 rounded-md overflow-auto">
                       <pre className="text-sm whitespace-pre-wrap">
                         {rawResponse}
@@ -285,46 +237,44 @@ Format the response as JSON with the following structure:
                       <div>
                         <h3 className="text-lg font-semibold mb-2">Health Score</h3>
                         <div className="flex items-center gap-2">
-                          <Progress value={analysis.healthScore / 10} className="w-full" />
+                          <Progress value={analysis.healthScore / 10 * 100} className="w-full" />
                           <span className="font-medium">{analysis.healthScore}/10</span>
                         </div>
                       </div>
 
                       <div>
                         <h3 className="text-lg font-semibold mb-2">Ingredients</h3>
-                        <div className="flex flex-wrap gap-2">
-                          {analysis.ingredients?.map((ingredient: string, index: number) => (
-                            <Badge key={index} variant="secondary">
-                              {ingredient}
-                            </Badge>
-                          )) || <p>No ingredients found</p>}
-                        </div>
+                        <ul className="list-disc pl-5 space-y-1">
+                          {analysis.foods && analysis.foods.map((ingredient: string, i: number) => (
+                            <li key={i}>{ingredient}</li>
+                          ))}
+                        </ul>
                       </div>
 
                       <div>
                         <h3 className="text-lg font-semibold mb-2">Recommendations</h3>
-                        <ul className="list-disc list-inside space-y-2">
-                          {analysis.recommendations?.map((rec: string, index: number) => (
-                            <li key={index}>{rec}</li>
-                          )) || <p>No recommendations found</p>}
+                        <ul className="list-disc pl-5 space-y-1">
+                          {analysis.recommendations && analysis.recommendations.map((rec: string, i: number) => (
+                            <li key={i}>{rec}</li>
+                          ))}
                         </ul>
                       </div>
-
-                      <Button onClick={() => {
-                        setAnalysis(null);
-                        setRawResponse(null);
-                      }} variant="outline">
-                        Analyze Another Image
-                      </Button>
                     </div>
                   </Card>
                 )}
+                
+                <Button onClick={() => {
+                  setAnalysis(null);
+                  setRawResponse(null);
+                  setError(null);
+                }}>
+                  Test Another Image
+                </Button>
               </div>
             )}
           </div>
         </div>
       </main>
-      <Footer />
     </div>
   );
 };
